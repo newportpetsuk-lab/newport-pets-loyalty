@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Customer Lookup - Newport Pets Rewards</title>
+
+<style>
+
+body{
+font-family: Arial;
+background:#f5f5f5;
+text-align:center;
+}
+
+.container{
+background:white;
+width:400px;
+margin:60px auto;
+padding:30px;
+border-radius:10px;
+box-shadow:0px 0px 10px rgba(0,0,0,0.1);
+}
+
+h1{
+color:#ff7a00;
+}
+
+button{
+background:#ff7a00;
+color:white;
+border:none;
+padding:12px 20px;
+border-radius:6px;
+cursor:pointer;
+margin-top:10px;
+}
+
+button:hover{
+background:#e86800;
+}
+
+.redeem{
+background:green;
+}
+
+.redeem:hover{
+background:#0b8a0b;
+}
+
+input{
+width:100%;
+padding:10px;
+margin-top:15px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Newport Pets Rewards</h1>
+
+<h3>Lookup Customer</h3>
+
+<form method="post">
+
+<input name="customer_id" placeholder="Scan customer QR" autofocus>
+
+<button type="submit">Lookup Customer</button>
+
+</form>
+
+{% if error %}
+
+<p style="color:red;">{{ error }}</p>
+
+{% endif %}
+
+
+{% if forename %}
+
+<h2>{{ forename }} {{ surname }}</h2>
+
+<p>Customer ID: <strong>{{ customer_id }}</strong></p>
+
+<p>Current points: <strong>{{ points }}</strong></p>
+
+
+{% if points >= 150 %}
+
+<form method="post" action="/redeem">
+
+<input type="hidden" name="customer_id" value="{{ customer_id }}">
+
+<button class="redeem">Redeem £2 Reward (150 points)</button>
+
+</form>
+
+{% else %}
+
+<p style="color:gray;">
+{{ 150 - points }} more points needed for £2 reward
+</p>
+
+{% endif %}
+
+{% endif %}
+
+</div>
+
+</body>
+</html>
