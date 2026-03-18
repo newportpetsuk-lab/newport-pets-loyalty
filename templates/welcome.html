@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome - Newport Pets Rewards</title>
+
+<style>
+
+body {
+    font-family: Arial;
+    background-color: #f5f5f5;
+    text-align: center;
+}
+
+.container {
+    background: white;
+    width: 350px;
+    margin: 60px auto;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+}
+
+.logo {
+    width: 120px;
+    margin-bottom: 10px;
+}
+
+h1 {
+    color: #ff7a00;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<img src="/static/logo.png" class="logo">
+
+<h1>Welcome {{forename}}</h1>
+
+<p>You are now part of <strong>Newport Pets Rewards</strong>.</p>
+
+<p>Your customer ID:</p>
+
+<h2>{{customer_id}}</h2>
+
+<img src="{{ url_for('static', filename='qrcodes/qr_' + customer_id + '.png') }}" width="200">
+
+<p>Show your loyalty QR code every time you shop to collect points.</p>
+
+</div>
+
+</body>
+</html>
