@@ -45,7 +45,7 @@ init_db()
 
 @app.route("/")
 def home():
-    return render_template("welcome.html")
+    return render_template("signup.html")
 
 
 # -------------------------
