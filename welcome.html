@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Newport Pets Rewards</title>
+<title>Welcome - Newport Pets Rewards</title>
 
 <style>
 
@@ -29,29 +29,6 @@ h1 {
     color: #ff7a00;
 }
 
-input {
-    width: 90%;
-    padding: 10px;
-    margin-top: 8px;
-    margin-bottom: 15px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-}
-
-button {
-    background-color: #ff7a00;
-    color: white;
-    border: none;
-    padding: 12px;
-    width: 95%;
-    border-radius: 6px;
-    font-size: 16px;
-}
-
-button:hover {
-    background-color: #e86800;
-}
-
 </style>
 </head>
 
@@ -61,23 +38,17 @@ button:hover {
 
 <img src="/static/logo.png" class="logo">
 
-<h1>Newport Pets Rewards</h1>
+<h1>Welcome {{forename}}</h1>
 
-<p>Join our loyalty programme and collect points every time you shop.</p>
+<p>You are now part of <strong>Newport Pets Rewards</strong>.</p>
 
-<form method="post">
+<p>Your customer ID:</p>
 
-<input name="forename" placeholder="Forename" required>
+<h2>{{customer_id}}</h2>
 
-<input name="surname" placeholder="Surname" required>
+<img src="{{ url_for('static', filename='qrcodes/qr_' + customer_id + '.png') }}" width="200">
 
-<input name="phone" pattern="[0-9]{11}" placeholder="Phone" required>
-
-<input type="email" name="email" placeholder="Email" required>
-
-<button type="submit">Join Newport Pets Rewards</button>
-
-</form>
+<p>Show your loyalty QR code every time you shop to collect points.</p>
 
 </div>
 
