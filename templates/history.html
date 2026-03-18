@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Transaction History</title>
+
+<style>
+body{
+font-family:Arial;
+background:#f5f5f5;
+text-align:center;
+}
+
+.container{
+background:white;
+width:500px;
+margin:60px auto;
+padding:30px;
+border-radius:10px;
+box-shadow:0px 0px 10px rgba(0,0,0,0.1);
+}
+
+h1{
+color:#ff7a00;
+}
+
+table{
+width:100%;
+margin-top:20px;
+border-collapse:collapse;
+}
+
+td{
+padding:8px;
+border-bottom:1px solid #ddd;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Transaction History</h1>
+
+<p>Customer ID: {{ customer_id }}</p>
+
+<table>
+
+<tr>
+<td><b>Points</b></td>
+<td><b>Amount (£)</b></td>
+<td><b>Reason</b></td>
+<td><b>Date & Time</b></td>
+</tr>
+
+{% for t in transactions %}
+
+<tr>
+<td>{{ t[0] }}</td>
+<td>{{ t[1] }}</td>
+<td>{{ t[2] }}</td>
+<td>{{ t[3] }}</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+</body>
+</html>
