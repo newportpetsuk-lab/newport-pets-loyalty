@@ -1,4 +1,0 @@
-Flask
-qrcode
-Pillow
-gunicorn
