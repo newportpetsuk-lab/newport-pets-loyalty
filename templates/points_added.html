@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Transaction Complete</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #1e1e1e;
+            color: white;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 40px auto;
+        }
+
+        .card {
+            background: #2c2c2c;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            margin-bottom: 10px;
+        }
+
+        .big {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .points {
+            font-size: 22px;
+            margin: 10px 0;
+        }
+
+        .reward {
+            background: #1b5e20;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 15px;
+            margin: 10px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 120px;
+        }
+
+        .btn-green {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-orange {
+            background: orange;
+            color: white;
+        }
+
+        .btn-red {
+            background: #e53935;
+            color: white;
+        }
+
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            background: #263238;
+            border-radius: 8px;
+        }
+    </style>
+
+    <script>
+    {% if reward_count == 0 %}
+        setTimeout(function() {
+            window.location.href = "/scan";
+        }, 2000);
+    {% endif %}
+</script>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- CUSTOMER INFO -->
+    <div class="card">
+        <h2>{{ forename }} {{ surname }}</h2>
+        <p>ID: {{ customer_id }}</p>
+    </div>
+
+    <!-- POINTS -->
+    <div class="card">
+        <div class="points">Points added: +{{ points_added }}</div>
+        <div class="big">Total: {{ new_points }}</div>
+    </div>
+
+    <!-- MESSAGE -->
+    {% if message %}
+    <div class="message">
+        {{ message }}
+    </div>
+    {% endif %}
+
+    <!-- REWARD SECTION -->
+    {% if reward_count > 0 %}
+    <div class="card reward">
+        <div class="big">£{{ reward_value }} AVAILABLE</div>
+        <p>{{ reward_count }} reward(s)</p>
+
+        <form method="POST" action="/redeem_custom">
+
+            <input type="hidden" name="customer_id" value="{{ customer_id }}">
+
+            <button class="btn-green" name="redeem_value" value="2">£2</button>
+
+            {% if reward_value >= 4 %}
+            <button class="btn-orange" name="redeem_value" value="4">£4</button>
+            {% endif %}
+
+            <button class="btn-red" name="redeem_value" value="{{ reward_value }}">
+                ALL (£{{ reward_value }})
+            </button>
+
+        </form>
+    </div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>
