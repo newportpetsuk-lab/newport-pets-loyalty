@@ -1,140 +1,138 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Newport Pets Loyalty</title>
+    <title>Transaction Complete</title>
 
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+            font-family: Arial;
+            background: #1e1e1e;
             color: white;
             text-align: center;
         }
 
-        header {
-            padding: 20px;
-            font-size: 26px;
-            font-weight: bold;
-            background: #000;
-            color: orange;
-            letter-spacing: 1px;
-        }
-
         .container {
-            max-width: 420px;
-            margin: 30px auto;
-            padding: 10px;
+            max-width: 500px;
+            margin: 40px auto;
         }
 
         .card {
-            background: rgba(0,0,0,0.6);
+            background: #2c2c2c;
             padding: 25px;
+            border-radius: 12px;
             margin-bottom: 20px;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
 
-        input {
-            padding: 14px;
-            width: 85%;
-            margin: 10px 0;
-            font-size: 16px;
-            border-radius: 8px;
-            border: none;
-            text-align: center;
+        h2 {
+            margin-bottom: 10px;
         }
 
-        button {
-            padding: 14px 25px;
-            background: orange;
-            border: none;
-            color: black;
+        .big {
+            font-size: 28px;
             font-weight: bold;
-            cursor: pointer;
-            border-radius: 8px;
-            font-size: 16px;
-            width: 60%;
         }
 
         .points {
-            font-size: 32px;
-            font-weight: bold;
+            font-size: 22px;
             margin: 10px 0;
         }
 
         .reward {
-            background: linear-gradient(135deg, #1b5e20, #2e7d32);
-            padding: 18px;
-            border-radius: 12px;
+            background: #1b5e20;
+            padding: 15px;
+            border-radius: 10px;
             margin-top: 15px;
-            font-size: 20px;
         }
 
-        .progress {
-            margin-top: 15px;
-            font-size: 16px;
-            color: #ccc;
+        button {
+            padding: 15px;
+            margin: 10px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 120px;
         }
 
-        .footer {
-            margin-top: 30px;
-            font-size: 14px;
-            color: #aaa;
+        .btn-green {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-orange {
+            background: orange;
+            color: white;
+        }
+
+        .btn-red {
+            background: #e53935;
+            color: white;
+        }
+
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            background: #263238;
+            border-radius: 8px;
         }
     </style>
+
+    <script>
+    {% if reward_count == 0 %}
+        setTimeout(function() {
+            window.location.href = "/scan";
+        }, 2000);
+    {% endif %}
+</script>
 
 </head>
 
 <body>
 
-<header>
-    NEWPORT PETS LOYALTY
-</header>
-
 <div class="container">
 
-    <!-- SEARCH -->
-    <div class="card">
-        <h2>Check Your Points</h2>
-
-        <form method="POST">
-            <input type="text" name="customer_id" placeholder="Enter your ID (NP00001)" required>
-            <br>
-            <button type="submit">VIEW MY REWARDS</button>
-        </form>
-
-        {% if error %}
-            <p style="color:#ff6b6b;">{{ error }}</p>
-        {% endif %}
-    </div>
-
-    {% if customer %}
     <!-- CUSTOMER INFO -->
     <div class="card">
-
-        <h2>{{ customer[0] }} {{ customer[1] }}</h2>
+        <h2>{{ forename }} {{ surname }}</h2>
         <p>ID: {{ customer_id }}</p>
+    </div>
 
-        <div class="points">{{ customer[2] }} points</div>
+    <!-- POINTS -->
+    <div class="card">
+        <div class="points">Points added: +{{ points_added }}</div>
+        <div class="big">Total: {{ new_points }}</div>
+    </div>
 
-        {% if reward_count > 0 %}
-        <div class="reward">
-            🎉 £{{ reward_value }} AVAILABLE<br>
-            {{ reward_count }} reward(s)
-        </div>
-        {% endif %}
-
-        <div class="progress">
-            Spend £{{ remaining_spend }} more to unlock your next reward
-        </div>
-
+    <!-- MESSAGE -->
+    {% if message %}
+    <div class="message">
+        {{ message }}
     </div>
     {% endif %}
 
-    <div class="footer">
-        🐠 Newport Pets — Supporting Local Aquatic & Pet Lovers
+    <!-- REWARD SECTION -->
+    {% if reward_count > 0 %}
+    <div class="card reward">
+        <div class="big">£{{ reward_value }} AVAILABLE</div>
+        <p>{{ reward_count }} reward(s)</p>
+
+        <form method="POST" action="/redeem_custom">
+
+            <input type="hidden" name="customer_id" value="{{ customer_id }}">
+
+            <button class="btn-green" name="redeem_value" value="2">£2</button>
+
+            {% if reward_value >= 4 %}
+            <button class="btn-orange" name="redeem_value" value="4">£4</button>
+            {% endif %}
+
+            <button class="btn-red" name="redeem_value" value="{{ reward_value }}">
+                ALL (£{{ reward_value }})
+            </button>
+
+        </form>
     </div>
+    {% endif %}
 
 </div>
 
