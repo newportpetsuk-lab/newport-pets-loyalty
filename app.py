@@ -1,15 +1,16 @@
 from flask import Flask, render_template, request
 import sqlite3
 import qrcode
-
+import os
 app = Flask(__name__)
-
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "customers.db")
 # -------------------------
 # DATABASE INITIALISATION
 # -------------------------
 
 def init_db():
-    conn = sqlite3.connect("customers.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -62,7 +63,7 @@ def signup():
         phone = request.form["phone"]
         email = request.form["email"]
 
-        conn = sqlite3.connect("customers.db")
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -114,7 +115,7 @@ def scan():
             else:
                 id_number = int(customer_id)
 
-            conn = sqlite3.connect("customers.db")
+            conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
 
             cursor.execute(
@@ -166,7 +167,7 @@ def addpoints():
     # Extract numeric ID
     id_number = int(customer_id[2:])
 
-    conn = sqlite3.connect("customers.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     # Update total points
@@ -219,7 +220,7 @@ def redeem():
     customer_id = request.form["customer_id"]
     id_number = int(customer_id[2:])
 
-    conn = sqlite3.connect("customers.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute(
@@ -262,7 +263,7 @@ def history(customer_id):
 
     numeric_id = int(customer_id.replace("NP", ""))
 
-    conn = sqlite3.connect("customers.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -290,7 +291,7 @@ def redeem_custom():
 
     id_number = int(customer_id[2:])
 
-    conn = sqlite3.connect("customers.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute(
@@ -359,7 +360,7 @@ def loyalty():
             else:
                 id_number = int(customer_id)
 
-            conn = sqlite3.connect("customers.db")
+            conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
 
             cursor.execute(
