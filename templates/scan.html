@@ -24,6 +24,7 @@
             width: 80%;
             margin: 10px;
             font-size: 16px;
+            box-sizing: border-box;
         }
 
         button {
@@ -42,6 +43,18 @@
 
         .other {
             background: #fff3cd;
+        }
+
+        .excluded {
+            background: #f1f1f1;
+        }
+
+        .field-label {
+            display: block;
+            width: 80%;
+            margin: 10px auto 0 auto;
+            text-align: left;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -74,14 +87,14 @@
 
         <input type="hidden" name="customer_id" value="{{ customer_id }}">
 
-        <!-- 🐠 Fish (double points) -->
-        <input type="text" name="fish_amount" class="fish" placeholder="Fish £ (double points)">
+        <label class="field-label" for="fish_amount">Fish £ (double points)</label>
+        <input type="number" step="0.01" min="0" name="fish_amount" id="fish_amount" class="fish" placeholder="Fish £ (double points)" value="0">
 
-        <!-- 🛍 Other items -->
-        <input type="text" name="other_amount" class="other" placeholder="Other £">
-        
-        <label>Excluded £</label>
-        <input type="number" step="0.01" name="excluded_amount" placeholder="0.00">
+        <label class="field-label" for="other_amount">Other eligible £</label>
+        <input type="number" step="0.01" min="0" name="other_amount" id="other_amount" class="other" placeholder="Other eligible £" value="0">
+
+        <label class="field-label" for="excluded_amount">Excluded £</label>
+        <input type="number" step="0.01" min="0" name="excluded_amount" id="excluded_amount" class="excluded" placeholder="Excluded £" value="0">
 
         <br>
 
