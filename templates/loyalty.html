@@ -63,6 +63,12 @@
             margin: 10px 0;
         }
 
+        .points-note {
+            font-size: 14px;
+            color: #ccc;
+            margin-top: 8px;
+        }
+
         .reward {
             background: linear-gradient(135deg, #1b5e20, #2e7d32);
             padding: 18px;
@@ -117,6 +123,7 @@
         <p>ID: {{ customer_id }}</p>
 
         <div class="points">{{ customer[2] }} points</div>
+        <div class="points-note">Some items may be excluded from points.</div>
 
         {% if reward_count > 0 %}
         <div class="reward">
