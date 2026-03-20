@@ -35,6 +35,7 @@
             font-weight: bold;
             cursor: pointer;
             font-size: 16px;
+            border-radius: 6px;
         }
 
         .fish {
@@ -83,18 +84,46 @@
     <h3>{{ customer[1] }} {{ customer[2] }}</h3>
     <p><strong>Points:</strong> {{ customer[3] }}</p>
 
+    <!-- 🔘 ACTION BUTTONS -->
+    <div style="margin-top:15px;">
+
+        <!-- 📜 View History -->
+        <a href="/history/{{ customer_id }}">
+            <button type="button" style="background:#4caf50; margin:5px;">
+                View History
+            </button>
+        </a>
+
+        {% if customer[3] >= 150 %}
+            <!-- 🎁 Redeem £2 -->
+            <form method="POST" action="/redeem" style="display:inline;">
+                <input type="hidden" name="customer_id" value="{{ customer_id }}">
+                <button type="submit" style="background:#e53935; margin:5px;">
+                    Redeem £2
+                </button>
+            </form>
+        {% else %}
+            <!-- 🚫 Not enough points -->
+            <button type="button" disabled style="background:grey; margin:5px; cursor:not-allowed;">
+                Need {{ 150 - customer[3] }} more points
+            </button>
+        {% endif %}
+
+    </div>
+
+    <!-- 💰 ADD POINTS -->
     <form method="POST" action="/addpoints">
 
         <input type="hidden" name="customer_id" value="{{ customer_id }}">
 
-        <label class="field-label" for="fish_amount">Fish £ (double points)</label>
-        <input type="number" step="0.01" min="0" name="fish_amount" id="fish_amount" class="fish" placeholder="Fish £ (double points)" value="0">
+        <label class="field-label">Fish £ (double points)</label>
+        <input type="number" step="0.01" min="0" name="fish_amount" class="fish" value="0">
 
-        <label class="field-label" for="other_amount">Other eligible £</label>
-        <input type="number" step="0.01" min="0" name="other_amount" id="other_amount" class="other" placeholder="Other eligible £" value="0">
+        <label class="field-label">Other eligible £</label>
+        <input type="number" step="0.01" min="0" name="other_amount" class="other" value="0">
 
-        <label class="field-label" for="excluded_amount">Excluded £</label>
-        <input type="number" step="0.01" min="0" name="excluded_amount" id="excluded_amount" class="excluded" placeholder="Excluded £" value="0">
+        <label class="field-label">Excluded £</label>
+        <input type="number" step="0.01" min="0" name="excluded_amount" class="excluded" value="0">
 
         <br>
 
