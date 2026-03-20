@@ -1,15 +1,23 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session, redirect
 import sqlite3
 import qrcode
 import os
 
 app = Flask(__name__)
+app.secret_key = "change_this_to_a_random_secret_key"
+
+# -------------------------
+# CONFIG
+# -------------------------
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SQLITE_PATH = os.path.join(BASE_DIR, "customers.db")
 QR_DIR = os.path.join(BASE_DIR, "static", "qrcodes")
+
+STAFF_USERNAME = "admin"
+STAFF_PASSWORD = "newport123"
 
 
 # -------------------------
@@ -41,7 +49,6 @@ def get_insert_id(cursor):
 
 def parse_customer_id(customer_id):
     customer_id = customer_id.strip().upper()
-
     if customer_id.startswith("NP"):
         return int(customer_id[2:])
     return int(customer_id)
@@ -102,11 +109,38 @@ def init_db():
 
     conn.commit()
     conn.close()
-
     os.makedirs(QR_DIR, exist_ok=True)
 
 
 init_db()
+
+
+# -------------------------
+# LOGIN
+# -------------------------
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+
+    error = None
+
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        if username == STAFF_USERNAME and password == STAFF_PASSWORD:
+            session["logged_in"] = True
+            return redirect("/scan")
+        else:
+            error = "Invalid login"
+
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
 
 
 # -------------------------
@@ -167,11 +201,14 @@ def signup():
 
 
 # -------------------------
-# SCAN CUSTOMER
+# SCAN CUSTOMER (PROTECTED)
 # -------------------------
 
 @app.route("/scan", methods=["GET", "POST"])
 def scan():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
 
     customer = None
     customer_id = None
@@ -214,26 +251,22 @@ def scan():
 
 
 # -------------------------
-# ADD POINTS
+# ADD POINTS (PROTECTED)
 # -------------------------
 
 @app.route("/addpoints", methods=["POST"])
 def addpoints():
 
+    if not session.get("logged_in"):
+        return redirect("/login")
+
     customer_id = request.form["customer_id"].strip().upper()
 
-    fish_amount = request.form.get("fish_amount", "0").replace(",", ".")
-    other_amount = request.form.get("other_amount", "0").replace(",", ".")
-    excluded_amount = request.form.get("excluded_amount", "0").replace(",", ".")
+    fish_amount = float(request.form.get("fish_amount", "0") or 0)
+    other_amount = float(request.form.get("other_amount", "0") or 0)
+    excluded_amount = float(request.form.get("excluded_amount", "0") or 0)
 
-    fish_amount = float(fish_amount) if fish_amount else 0
-    other_amount = float(other_amount) if other_amount else 0
-    excluded_amount = float(excluded_amount) if excluded_amount else 0
-
-    fish_points = int(fish_amount * 2)
-    other_points = int(other_amount)
-
-    points = fish_points + other_points
+    points = int(fish_amount * 2 + other_amount)
     total_amount = fish_amount + other_amount + excluded_amount
 
     id_number = parse_customer_id(customer_id)
@@ -278,11 +311,14 @@ def addpoints():
 
 
 # -------------------------
-# REDEEM REWARD
+# REDEEM (PROTECTED)
 # -------------------------
 
 @app.route("/redeem", methods=["POST"])
 def redeem():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
 
     customer_id = request.form["customer_id"]
     id_number = parse_customer_id(customer_id)
@@ -295,8 +331,7 @@ def redeem():
         (id_number,)
     )
 
-    result = cursor.fetchone()
-    current_points = result[0] if result else 0
+    current_points = cursor.fetchone()[0]
 
     if current_points >= 150:
 
@@ -322,7 +357,7 @@ def redeem():
 
 
 # -------------------------
-# TRANSACTION HISTORY
+# HISTORY
 # -------------------------
 
 @app.route("/history/<customer_id>")
@@ -333,12 +368,10 @@ def history(customer_id):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(f"""
-        SELECT points, amount, reason, timestamp
-        FROM transactions
-        WHERE customer_id = {p()}
-        ORDER BY timestamp DESC
-    """, (numeric_id,))
+    cursor.execute(
+        f"SELECT points, amount, reason, timestamp FROM transactions WHERE customer_id={p()} ORDER BY timestamp DESC",
+        (numeric_id,)
+    )
 
     transactions = cursor.fetchall()
 
@@ -352,71 +385,7 @@ def history(customer_id):
 
 
 # -------------------------
-# REDEEM CUSTOM
-# -------------------------
-
-@app.route("/redeem_custom", methods=["POST"])
-def redeem_custom():
-
-    customer_id = request.form["customer_id"]
-    redeem_value = int(request.form["redeem_value"])
-
-    id_number = parse_customer_id(customer_id)
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        f"SELECT forename, surname, points FROM customers WHERE id={p()}",
-        (id_number,)
-    )
-
-    customer = cursor.fetchone()
-    current_points = customer[2]
-
-    points_to_deduct = (redeem_value // 2) * 150
-
-    if current_points >= points_to_deduct:
-
-        cursor.execute(
-            f"UPDATE customers SET points = points - {p()} WHERE id={p()}",
-            (points_to_deduct, id_number)
-        )
-
-        cursor.execute(
-            f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
-            (id_number, -points_to_deduct, -redeem_value, "Reward redeemed")
-        )
-
-        conn.commit()
-
-        new_points = current_points - points_to_deduct
-        message = f"£{redeem_value} reward applied"
-
-    else:
-        new_points = current_points
-        message = "Not enough points"
-
-    conn.close()
-
-    reward_count = new_points // 150
-    reward_value = reward_count * 2
-
-    return render_template(
-        "points_added.html",
-        forename=customer[0],
-        surname=customer[1],
-        customer_id=customer_id,
-        points_added=0,
-        new_points=new_points,
-        reward_count=reward_count,
-        reward_value=reward_value,
-        message=message
-    )
-
-
-# -------------------------
-# LOYALTY LOOKUP
+# LOYALTY
 # -------------------------
 
 @app.route("/loyalty", methods=["GET", "POST"])
@@ -449,16 +418,12 @@ def loyalty():
 
             if customer:
                 points = customer[2]
-
                 reward_count = points // 150
                 reward_value = reward_count * 2
-
                 remaining_points = 150 - (points % 150)
                 if points % 150 == 0:
                     remaining_points = 150
-
                 remaining_spend = remaining_points
-
             else:
                 error = "Customer not found"
 
@@ -477,7 +442,7 @@ def loyalty():
 
 
 # -------------------------
-# RUN SERVER
+# RUN
 # -------------------------
 
 if __name__ == "__main__":
