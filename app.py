@@ -152,17 +152,17 @@ def addpoints():
     # 🐠 Get amounts (handle empty + comma)
     fish_amount = request.form.get("fish_amount", "0").replace(",", ".")
     other_amount = request.form.get("other_amount", "0").replace(",", ".")
+    excluded_amount = request.form.get("excluded_amount", "0").replace(",", ".")
 
-    # Convert safely
     fish_amount = float(fish_amount) if fish_amount else 0
     other_amount = float(other_amount) if other_amount else 0
+    excluded_amount = float(excluded_amount) if excluded_amount else 0
 
-    # 🎯 Points logic
-    fish_points = int(fish_amount * 2)     # double points for fish
-    other_points = int(other_amount)       # normal points
+    fish_points = int(fish_amount * 2)
+    other_points = int(other_amount)
 
     points = fish_points + other_points
-    total_amount = fish_amount + other_amount
+    total_amount = fish_amount + other_amount + excluded_amount
 
     # Extract numeric ID
     id_number = int(customer_id[2:])
