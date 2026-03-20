@@ -2,43 +2,112 @@ from flask import Flask, render_template, request
 import sqlite3
 import qrcode
 import os
+
 app = Flask(__name__)
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "customers.db")
+SQLITE_PATH = os.path.join(BASE_DIR, "customers.db")
+QR_DIR = os.path.join(BASE_DIR, "static", "qrcodes")
+
+
+# -------------------------
+# DATABASE HELPERS
+# -------------------------
+
+def is_postgres():
+    return DATABASE_URL is not None and DATABASE_URL.strip() != ""
+
+
+def get_connection():
+    if is_postgres():
+        import psycopg2
+        return psycopg2.connect(DATABASE_URL)
+    else:
+        return sqlite3.connect(SQLITE_PATH)
+
+
+def p():
+    return "%s" if is_postgres() else "?"
+
+
+def get_insert_id(cursor):
+    if is_postgres():
+        return cursor.fetchone()[0]
+    else:
+        return cursor.lastrowid
+
+
+def parse_customer_id(customer_id):
+    customer_id = customer_id.strip().upper()
+
+    if customer_id.startswith("NP"):
+        return int(customer_id[2:])
+    return int(customer_id)
+
+
 # -------------------------
 # DATABASE INITIALISATION
 # -------------------------
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS customers(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        forename TEXT,
-        surname TEXT,
-        phone TEXT,
-        email TEXT,
-        points INTEGER DEFAULT 0
-    )
-    """)
+    if is_postgres():
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS customers(
+            id SERIAL PRIMARY KEY,
+            forename TEXT,
+            surname TEXT,
+            phone TEXT,
+            email TEXT,
+            points INTEGER DEFAULT 0
+        )
+        """)
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS transactions(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer_id INTEGER,
-        points INTEGER,
-        amount REAL,
-        reason TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions(
+            id SERIAL PRIMARY KEY,
+            customer_id INTEGER,
+            points INTEGER,
+            amount REAL,
+            reason TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+    else:
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS customers(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            forename TEXT,
+            surname TEXT,
+            phone TEXT,
+            email TEXT,
+            points INTEGER DEFAULT 0
+        )
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER,
+            points INTEGER,
+            amount REAL,
+            reason TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
 
     conn.commit()
     conn.close()
 
+    os.makedirs(QR_DIR, exist_ok=True)
+
+
 init_db()
+
 
 # -------------------------
 # HOME
@@ -53,7 +122,7 @@ def home():
 # SIGNUP
 # -------------------------
 
-@app.route("/signup", methods=["GET","POST"])
+@app.route("/signup", methods=["GET", "POST"])
 def signup():
 
     if request.method == "POST":
@@ -63,15 +132,22 @@ def signup():
         phone = request.form["phone"]
         email = request.form["email"]
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
-        INSERT INTO customers(forename,surname,phone,email)
-        VALUES(?,?,?,?)
-        """,(forename,surname,phone,email))
+        if is_postgres():
+            cursor.execute(f"""
+            INSERT INTO customers(forename, surname, phone, email)
+            VALUES({p()}, {p()}, {p()}, {p()})
+            RETURNING id
+            """, (forename, surname, phone, email))
+        else:
+            cursor.execute("""
+            INSERT INTO customers(forename, surname, phone, email)
+            VALUES(?, ?, ?, ?)
+            """, (forename, surname, phone, email))
 
-        customer_id = cursor.lastrowid
+        customer_id = get_insert_id(cursor)
 
         conn.commit()
         conn.close()
@@ -79,7 +155,7 @@ def signup():
         formatted_id = "NP" + str(customer_id).zfill(5)
 
         qr = qrcode.make(formatted_id)
-        qr.save(f"static/qrcodes/qr_{formatted_id}.png")
+        qr.save(os.path.join(QR_DIR, f"qr_{formatted_id}.png"))
 
         return render_template(
             "welcome.html",
@@ -94,7 +170,7 @@ def signup():
 # SCAN CUSTOMER
 # -------------------------
 
-@app.route("/scan", methods=["GET","POST"])
+@app.route("/scan", methods=["GET", "POST"])
 def scan():
 
     customer = None
@@ -103,23 +179,20 @@ def scan():
 
     if request.method == "POST":
 
-        customer_id = request.form.get("customer_id","").strip().upper()
+        customer_id = request.form.get("customer_id", "").strip().upper()
 
         if customer_id == "":
             error = "Please scan or enter a customer ID"
             return render_template("scan.html", error=error)
 
         try:
-            if customer_id.startswith("NP"):
-                id_number = int(customer_id[2:])
-            else:
-                id_number = int(customer_id)
+            id_number = parse_customer_id(customer_id)
 
-            conn = sqlite3.connect(DB_PATH)
+            conn = get_connection()
             cursor = conn.cursor()
 
             cursor.execute(
-                "SELECT id, forename, surname, points FROM customers WHERE id=?",
+                f"SELECT id, forename, surname, points FROM customers WHERE id={p()}",
                 (id_number,)
             )
 
@@ -149,7 +222,6 @@ def addpoints():
 
     customer_id = request.form["customer_id"].strip().upper()
 
-    # 🐠 Get amounts (handle empty + comma)
     fish_amount = request.form.get("fish_amount", "0").replace(",", ".")
     other_amount = request.form.get("other_amount", "0").replace(",", ".")
     excluded_amount = request.form.get("excluded_amount", "0").replace(",", ".")
@@ -164,27 +236,23 @@ def addpoints():
     points = fish_points + other_points
     total_amount = fish_amount + other_amount + excluded_amount
 
-    # Extract numeric ID
-    id_number = int(customer_id[2:])
+    id_number = parse_customer_id(customer_id)
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cursor = conn.cursor()
 
-    # Update total points
     cursor.execute(
-        "UPDATE customers SET points = points + ? WHERE id=?",
+        f"UPDATE customers SET points = points + {p()} WHERE id={p()}",
         (points, id_number)
     )
 
-    # Save transaction
     cursor.execute(
-        "INSERT INTO transactions (customer_id, points, amount, reason) VALUES (?,?,?,?)",
+        f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
         (id_number, points, total_amount, "Purchase")
     )
 
-    # Get updated customer
     cursor.execute(
-        "SELECT forename, surname, points FROM customers WHERE id=?",
+        f"SELECT forename, surname, points FROM customers WHERE id={p()}",
         (id_number,)
     )
 
@@ -193,7 +261,6 @@ def addpoints():
     conn.commit()
     conn.close()
 
-    # 🎁 Reward check
     new_points = customer[2]
     reward_count = new_points // 150
     reward_value = reward_count * 2
@@ -218,32 +285,32 @@ def addpoints():
 def redeem():
 
     customer_id = request.form["customer_id"]
-    id_number = int(customer_id[2:])
+    id_number = parse_customer_id(customer_id)
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT points FROM customers WHERE id=?",
+        f"SELECT points FROM customers WHERE id={p()}",
         (id_number,)
     )
 
-    current_points = cursor.fetchone()[0]
+    result = cursor.fetchone()
+    current_points = result[0] if result else 0
 
     if current_points >= 150:
 
         cursor.execute(
-            "UPDATE customers SET points = points - 150 WHERE id=?",
+            f"UPDATE customers SET points = points - 150 WHERE id={p()}",
             (id_number,)
         )
 
         cursor.execute(
-            "INSERT INTO transactions (customer_id, points, amount, reason) VALUES (?,?,?,?)",
+            f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
             (id_number, -150, -2, "Reward redeemed")
         )
 
         conn.commit()
-
         message = "£2 reward redeemed successfully"
 
     else:
@@ -261,15 +328,15 @@ def redeem():
 @app.route("/history/<customer_id>")
 def history(customer_id):
 
-    numeric_id = int(customer_id.replace("NP", ""))
+    numeric_id = parse_customer_id(customer_id)
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
+    cursor.execute(f"""
         SELECT points, amount, reason, timestamp
         FROM transactions
-        WHERE customer_id = ?
+        WHERE customer_id = {p()}
         ORDER BY timestamp DESC
     """, (numeric_id,))
 
@@ -283,37 +350,41 @@ def history(customer_id):
         customer_id=customer_id
     )
 
+
+# -------------------------
+# REDEEM CUSTOM
+# -------------------------
+
 @app.route("/redeem_custom", methods=["POST"])
 def redeem_custom():
 
     customer_id = request.form["customer_id"]
-    redeem_value = int(request.form["redeem_value"])  # £ value
+    redeem_value = int(request.form["redeem_value"])
 
-    id_number = int(customer_id[2:])
+    id_number = parse_customer_id(customer_id)
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT forename, surname, points FROM customers WHERE id=?",
+        f"SELECT forename, surname, points FROM customers WHERE id={p()}",
         (id_number,)
     )
 
     customer = cursor.fetchone()
     current_points = customer[2]
 
-    # Convert £ → points
     points_to_deduct = (redeem_value // 2) * 150
 
     if current_points >= points_to_deduct:
 
         cursor.execute(
-            "UPDATE customers SET points = points - ? WHERE id=?",
+            f"UPDATE customers SET points = points - {p()} WHERE id={p()}",
             (points_to_deduct, id_number)
         )
 
         cursor.execute(
-            "INSERT INTO transactions (customer_id, points, amount, reason) VALUES (?,?,?,?)",
+            f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
             (id_number, -points_to_deduct, -redeem_value, "Reward redeemed")
         )
 
@@ -328,7 +399,6 @@ def redeem_custom():
 
     conn.close()
 
-    # Recalculate rewards
     reward_count = new_points // 150
     reward_value = reward_count * 2
 
@@ -343,28 +413,34 @@ def redeem_custom():
         reward_value=reward_value,
         message=message
     )
+
+
+# -------------------------
+# LOYALTY LOOKUP
+# -------------------------
+
 @app.route("/loyalty", methods=["GET", "POST"])
 def loyalty():
 
     customer = None
     customer_id = None
     error = None
+    reward_count = None
+    reward_value = None
+    remaining_spend = None
 
     if request.method == "POST":
 
         customer_id = request.form.get("customer_id", "").strip().upper()
 
         try:
-            if customer_id.startswith("NP"):
-                id_number = int(customer_id[2:])
-            else:
-                id_number = int(customer_id)
+            id_number = parse_customer_id(customer_id)
 
-            conn = sqlite3.connect(DB_PATH)
+            conn = get_connection()
             cursor = conn.cursor()
 
             cursor.execute(
-                "SELECT forename, surname, points FROM customers WHERE id=?",
+                f"SELECT forename, surname, points FROM customers WHERE id={p()}",
                 (id_number,)
             )
 
@@ -378,7 +454,10 @@ def loyalty():
                 reward_value = reward_count * 2
 
                 remaining_points = 150 - (points % 150)
-                remaining_spend = remaining_points  # £1 = 1 point
+                if points % 150 == 0:
+                    remaining_points = 150
+
+                remaining_spend = remaining_points
 
             else:
                 error = "Customer not found"
@@ -391,10 +470,12 @@ def loyalty():
         customer=customer,
         customer_id=customer_id,
         error=error,
-        reward_count=locals().get("reward_count"),
-        reward_value=locals().get("reward_value"),
-        remaining_spend=locals().get("remaining_spend")
-    )    
+        reward_count=reward_count,
+        reward_value=reward_value,
+        remaining_spend=remaining_spend
+    )
+
+
 # -------------------------
 # RUN SERVER
 # -------------------------
