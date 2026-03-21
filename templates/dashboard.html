@@ -2,17 +2,58 @@
 <html>
 <head>
     <title>Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f5f5f5;
+            text-align: center;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            margin: 30px auto;
+            width: 400px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .stat {
+            font-size: 24px;
+            margin: 15px 0;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: orange;
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
 </head>
-<body style="text-align:center; font-family:Arial;">
 
-<h2>📊 Loyalty Dashboard</h2>
+<body>
 
-<p><strong>Total Customers:</strong> {{ total_customers }}</p>
-<p><strong>Total Points Issued:</strong> {{ total_points }}</p>
-<p><strong>Total Rewards Redeemed:</strong> {{ total_rewards }}</p>
+<div class="card">
+    <h1>Dashboard</h1>
 
-<br>
-<a href="/scan">Back to Scan</a>
+    <div class="stat">👥 Customers: {{ total_customers }}</div>
+    <div class="stat">⭐ Points Issued: {{ total_points }}</div>
+    <div class="stat">💸 Rewards Given: £{{ total_rewards }}</div>
+
+    <br>
+
+    <a href="/scan">
+        <button>Back to Scan</button>
+    </a>
+</div>
 
 </body>
 </html>
