@@ -66,11 +66,20 @@
 
     <h2>Scan Customer</h2>
 
-    <form method="POST">
-        <input type="text" name="customer_id" placeholder="Scan QR code" autofocus>
-        <br>
-        <button type="submit">Load Customer</button>
-    </form>
+    <form method="POST" id="scanForm">
+    <input type="text" name="customer_id" id="scanner" placeholder="Scan QR code" autofocus>
+</form>
+
+<script>
+    const scanner = document.getElementById("scanner");
+    const form = document.getElementById("scanForm");
+
+    scanner.addEventListener("input", function() {
+        if (scanner.value.length >= 6) {
+            form.submit();
+        }
+    });
+</script>
 
     {% if error %}
         <p style="color:red;">{{ error }}</p>
