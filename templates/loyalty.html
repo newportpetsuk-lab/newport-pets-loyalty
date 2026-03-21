@@ -1,149 +1,59 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Newport Pets Loyalty</title>
+@app.route("/loyalty", methods=["GET", "POST"])
+def loyalty():
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
-            color: white;
-            text-align: center;
-        }
+    customer = None
+    customer_id = None
+    error = None
+    reward_count = None
+    reward_value = None
+    remaining_spend = None
 
-        header {
-            padding: 20px;
-            font-size: 26px;
-            font-weight: bold;
-            background: #000;
-            color: orange;
-            letter-spacing: 1px;
-        }
+    if request.method == "POST":
 
-        .container {
-            max-width: 420px;
-            margin: 30px auto;
-            padding: 10px;
-        }
+        customer_id = request.form.get("customer_id", "").strip().upper()
+        phone = request.form.get("phone", "").strip()
 
-        .card {
-            background: rgba(0,0,0,0.6);
-            padding: 25px;
-            margin-bottom: 20px;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
+        if not customer_id or not phone:
+            error = "Please enter both ID and phone number"
+            return render_template("loyalty.html", error=error)
 
-        input {
-            padding: 14px;
-            width: 85%;
-            margin: 10px 0;
-            font-size: 16px;
-            border-radius: 8px;
-            border: none;
-            text-align: center;
-        }
+        try:
+            id_number = parse_customer_id(customer_id)
 
-        button {
-            padding: 14px 25px;
-            background: orange;
-            border: none;
-            color: black;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 8px;
-            font-size: 16px;
-            width: 60%;
-        }
+            conn = get_connection()
+            cursor = conn.cursor()
 
-        .points {
-            font-size: 32px;
-            font-weight: bold;
-            margin: 10px 0;
-        }
+            cursor.execute(
+                f"SELECT forename, surname, points FROM customers WHERE id={p()} AND phone={p()}",
+                (id_number, phone)
+            )
 
-        .points-note {
-            font-size: 14px;
-            color: #ccc;
-            margin-top: 8px;
-        }
+            customer = cursor.fetchone()
+            conn.close()
 
-        .reward {
-            background: linear-gradient(135deg, #1b5e20, #2e7d32);
-            padding: 18px;
-            border-radius: 12px;
-            margin-top: 15px;
-            font-size: 20px;
-        }
+            if customer:
+                points = customer[2]
 
-        .progress {
-            margin-top: 15px;
-            font-size: 16px;
-            color: #ccc;
-        }
+                reward_count = points // 150
+                reward_value = reward_count * 2
 
-        .footer {
-            margin-top: 30px;
-            font-size: 14px;
-            color: #aaa;
-        }
-    </style>
+                remaining_points = 150 - (points % 150)
+                if points % 150 == 0:
+                    remaining_points = 150
 
-</head>
+                remaining_spend = remaining_points
+            else:
+                error = "Details not found. Please check your ID and phone number."
 
-<body>
+        except:
+            error = "Invalid details"
 
-<header>
-    NEWPORT PETS LOYALTY
-</header>
-
-<div class="container">
-
-    <!-- SEARCH -->
-    <div class="card">
-        <h2>Check Your Points</h2>
-
-        <form method="POST">
-            <input type="text" name="customer_id" placeholder="Enter your ID (NP00001)" required>
-            <br>
-            <button type="submit">VIEW MY REWARDS</button>
-        </form>
-
-        {% if error %}
-            <p style="color:#ff6b6b;">{{ error }}</p>
-        {% endif %}
-    </div>
-
-    {% if customer %}
-    <!-- CUSTOMER INFO -->
-    <div class="card">
-
-        <h2>{{ customer[0] }} {{ customer[1] }}</h2>
-        <p>ID: {{ customer_id }}</p>
-
-        <div class="points">{{ customer[2] }} points</div>
-        <div class="points-note">Some items may be excluded from points.</div>
-
-        {% if reward_count > 0 %}
-        <div class="reward">
-            🎉 £{{ reward_value }} AVAILABLE<br>
-            {{ reward_count }} reward(s)
-        </div>
-        {% endif %}
-
-        <div class="progress">
-            Spend £{{ remaining_spend }} more to unlock your next reward
-        </div>
-
-    </div>
-    {% endif %}
-
-    <div class="footer">
-        🐠 Newport Pets — Supporting Local Aquatic & Pet Lovers
-    </div>
-
-</div>
-
-</body>
-</html>
+    return render_template(
+        "loyalty.html",
+        customer=customer,
+        customer_id=customer_id,
+        error=error,
+        reward_count=reward_count,
+        reward_value=reward_value,
+        remaining_spend=remaining_spend
+    )
