@@ -439,7 +439,32 @@ def loyalty():
         reward_value=reward_value,
         remaining_spend=remaining_spend
     )
+@app.route("/dashboard")
+def dashboard():
 
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM customers")
+    total_customers = cursor.fetchone()[0]
+
+    cursor.execute("SELECT SUM(points) FROM transactions WHERE points > 0")
+    total_points = cursor.fetchone()[0] or 0
+
+    cursor.execute("SELECT COUNT(*) FROM transactions WHERE points < 0")
+    total_rewards = cursor.fetchone()[0]
+
+    conn.close()
+
+    return render_template(
+        "dashboard.html",
+        total_customers=total_customers,
+        total_points=total_points,
+        total_rewards=total_rewards
+    )
 
 # -------------------------
 # RUN
