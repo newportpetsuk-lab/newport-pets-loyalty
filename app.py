@@ -326,47 +326,35 @@ def redeem():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Get current points
     cursor.execute(
-        f"SELECT forename, surname, points FROM customers WHERE id={p()}",
+        f"SELECT points FROM customers WHERE id={p()}",
         (id_number,)
     )
 
-    customer = cursor.fetchone()
-    forename, surname, current_points = customer
+    current_points = cursor.fetchone()[0]
 
-    # Calculate rewards
-    reward_count = current_points // 150
-    reward_value = reward_count * 2
-    points_to_deduct = reward_count * 150
+    if current_points >= 150:
 
-    if reward_count > 0:
-
-        # Deduct points
         cursor.execute(
-            f"UPDATE customers SET points = points - {p()} WHERE id={p()}",
-            (points_to_deduct, id_number)
+            f"UPDATE customers SET points = points - 150 WHERE id={p()}",
+            (id_number,)
         )
 
-        # Log transaction
         cursor.execute(
             f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
-            (id_number, -points_to_deduct, -reward_value, "Reward redeemed")
+            (id_number, -150, -2, "Reward redeemed")
         )
 
         conn.commit()
 
-        message = f"Apply £{reward_value} discount on till"
+        message = "Apply £2 discount on till"
 
     else:
         message = "Not enough points"
 
     conn.close()
 
-    return render_template(
-        "redeem.html",
-        message=message
-    )
+    return render_template("redeem.html", message=message)
 
 
 # -------------------------
