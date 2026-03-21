@@ -346,7 +346,7 @@ def redeem():
         )
 
         conn.commit()
-        message = "£2 reward redeemed successfully"
+        message = f"Apply £{reward_value} discount on till"
 
     else:
         message = "Not enough points"
