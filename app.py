@@ -314,6 +314,8 @@ def addpoints():
 # REDEEM (PROTECTED)
 # -------------------------
 
+from datetime import datetime, timedelta
+
 @app.route("/redeem", methods=["POST"])
 def redeem():
 
@@ -326,13 +328,52 @@ def redeem():
     conn = get_connection()
     cursor = conn.cursor()
 
+    # -------------------------
+    # GET CURRENT POINTS
+    # -------------------------
     cursor.execute(
         f"SELECT points FROM customers WHERE id={p()}",
         (id_number,)
     )
-
     current_points = cursor.fetchone()[0]
 
+    # -------------------------
+    # GET LAST TRANSACTION TIME
+    # -------------------------
+    cursor.execute(
+        f"""
+        SELECT timestamp 
+        FROM transactions 
+        WHERE customer_id={p()} 
+        ORDER BY timestamp DESC 
+        LIMIT 1
+        """,
+        (id_number,)
+    )
+
+    last_transaction = cursor.fetchone()
+
+    if last_transaction:
+        last_time = last_transaction[0]
+
+        # Convert string → datetime if needed
+        if isinstance(last_time, str):
+            try:
+                last_time = datetime.fromisoformat(last_time)
+            except:
+                last_time = datetime.now()
+
+        # 🚫 BLOCK immediate redemption (within 2 hours)
+        if datetime.now() - last_time < timedelta(hours=2):
+            conn.close()
+            return render_template(
+                "redeem.html",
+                message="Rewards available next visit"
+            )
+
+    # -------------------------
+    # NORMAL REDEEM LOGIC
+    # -------------------------
     if current_points >= 150:
 
         cursor.execute(
@@ -355,34 +396,6 @@ def redeem():
     conn.close()
 
     return render_template("redeem.html", message=message)
-
-
-# -------------------------
-# HISTORY
-# -------------------------
-
-@app.route("/history/<customer_id>")
-def history(customer_id):
-
-    numeric_id = parse_customer_id(customer_id)
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        f"SELECT points, amount, reason, timestamp FROM transactions WHERE customer_id={p()} ORDER BY timestamp DESC",
-        (numeric_id,)
-    )
-
-    transactions = cursor.fetchall()
-
-    conn.close()
-
-    return render_template(
-        "history.html",
-        transactions=transactions,
-        customer_id=customer_id
-    )
 
 
 # -------------------------
