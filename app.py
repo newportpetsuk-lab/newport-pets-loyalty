@@ -321,31 +321,41 @@ def redeem():
         return redirect("/login")
 
     customer_id = request.form["customer_id"]
-    id_number = parse_customer_id(customer_id)
+    id_number = int(customer_id[2:])
 
     conn = get_connection()
     cursor = conn.cursor()
 
+    # Get current points
     cursor.execute(
-        f"SELECT points FROM customers WHERE id={p()}",
+        f"SELECT forename, surname, points FROM customers WHERE id={p()}",
         (id_number,)
     )
 
-    current_points = cursor.fetchone()[0]
+    customer = cursor.fetchone()
+    forename, surname, current_points = customer
 
-    if current_points >= 150:
+    # Calculate rewards
+    reward_count = current_points // 150
+    reward_value = reward_count * 2
+    points_to_deduct = reward_count * 150
 
+    if reward_count > 0:
+
+        # Deduct points
         cursor.execute(
-            f"UPDATE customers SET points = points - 150 WHERE id={p()}",
-            (id_number,)
+            f"UPDATE customers SET points = points - {p()} WHERE id={p()}",
+            (points_to_deduct, id_number)
         )
 
+        # Log transaction
         cursor.execute(
             f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
-            (id_number, -150, -2, "Reward redeemed")
+            (id_number, -points_to_deduct, -reward_value, "Reward redeemed")
         )
 
         conn.commit()
+
         message = f"Apply £{reward_value} discount on till"
 
     else:
@@ -353,7 +363,10 @@ def redeem():
 
     conn.close()
 
-    return render_template("redeem.html", message=message)
+    return render_template(
+        "redeem.html",
+        message=message
+    )
 
 
 # -------------------------
