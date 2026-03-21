@@ -79,7 +79,13 @@
     <h2>Scan Customer</h2>
 
     <form method="POST" id="scanForm">
-    <input type="text" name="customer_id" id="scanner" placeholder="Scan QR code" autofocus>
+    <input 
+    type="text" 
+    name="customer_id" 
+    placeholder="Scan QR code" 
+    autofocus 
+    onkeypress="if(event.key === 'Enter'){ this.form.submit(); }"
+>
 </form>
 
 <script>
