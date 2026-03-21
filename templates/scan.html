@@ -122,19 +122,17 @@
         </a>
 
         {% if customer[3] >= 150 %}
-            <!-- 🎁 Redeem £2 -->
-            <form method="POST" action="/redeem" style="display:inline;">
-                <input type="hidden" name="customer_id" value="{{ customer_id }}">
-                <button type="submit" style="background:#e53935; margin:5px;">
-                    Redeem £2
-                </button>
-            </form>
-        {% else %}
-            <!-- 🚫 Not enough points -->
-            <button type="button" disabled style="background:grey; margin:5px; cursor:not-allowed;">
-                Need {{ 150 - customer[3] }} more points
-            </button>
-        {% endif %}
+    <form method="POST" action="/redeem" style="display:inline;">
+        <input type="hidden" name="customer_id" value="{{ customer_id }}">
+        <button type="submit" style="background:#e53935; margin:5px;">
+            Redeem £{{ (customer[3] // 150) * 2 }}
+        </button>
+    </form>
+{% else %}
+    <button type="button" disabled style="background:grey; margin:5px; cursor:not-allowed;">
+        Need {{ 150 - customer[3] }} more points
+    </button>
+{% endif %}
 
     </div>
 
