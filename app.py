@@ -401,6 +401,11 @@ def loyalty():
     if request.method == "POST":
 
         customer_id = request.form.get("customer_id", "").strip().upper()
+        phone = request.form.get("phone", "").strip()
+
+        if not customer_id or not phone:
+            error = "Please enter both ID and phone number"
+            return render_template("loyalty.html", error=error)
 
         try:
             id_number = parse_customer_id(customer_id)
@@ -409,8 +414,8 @@ def loyalty():
             cursor = conn.cursor()
 
             cursor.execute(
-                f"SELECT forename, surname, points FROM customers WHERE id={p()}",
-                (id_number,)
+                f"SELECT forename, surname, points FROM customers WHERE id={p()} AND phone={p()}",
+                (id_number, phone)
             )
 
             customer = cursor.fetchone()
@@ -418,17 +423,20 @@ def loyalty():
 
             if customer:
                 points = customer[2]
+
                 reward_count = points // 150
                 reward_value = reward_count * 2
+
                 remaining_points = 150 - (points % 150)
                 if points % 150 == 0:
                     remaining_points = 150
+
                 remaining_spend = remaining_points
             else:
-                error = "Customer not found"
+                error = "Details not found. Please check your ID and phone number."
 
         except:
-            error = "Invalid ID"
+            error = "Invalid details"
 
     return render_template(
         "loyalty.html",
@@ -438,32 +446,6 @@ def loyalty():
         reward_count=reward_count,
         reward_value=reward_value,
         remaining_spend=remaining_spend
-    )
-@app.route("/dashboard")
-def dashboard():
-
-    if not session.get("logged_in"):
-        return redirect("/login")
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT COUNT(*) FROM customers")
-    total_customers = cursor.fetchone()[0]
-
-    cursor.execute("SELECT SUM(points) FROM transactions WHERE points > 0")
-    total_points = cursor.fetchone()[0] or 0
-
-    cursor.execute("SELECT COUNT(*) FROM transactions WHERE points < 0")
-    total_rewards = cursor.fetchone()[0]
-
-    conn.close()
-
-    return render_template(
-        "dashboard.html",
-        total_customers=total_customers,
-        total_points=total_points,
-        total_rewards=total_rewards
     )
 
 # -------------------------
