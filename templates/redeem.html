@@ -1,65 +1,41 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Redeem</title>
+@app.route("/redeem", methods=["POST"])
+def redeem():
 
-    <style>
-        body {
-            font-family: Arial;
-            text-align: center;
-            background: #f5f5f5;
-        }
+    if not session.get("logged_in"):
+        return redirect("/login")
 
-        .card {
-            background: white;
-            padding: 40px;
-            margin: 50px auto;
-            width: 400px;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        }
+    customer_id = request.form["customer_id"]
+    id_number = int(customer_id[2:])
 
-        .message {
-            font-size: 28px;
-            font-weight: bold;
-            color: #e53935;
-            margin-bottom: 20px;
-        }
+    conn = get_connection()
+    cursor = conn.cursor()
 
-        .sub {
-            font-size: 16px;
-            color: #555;
-        }
+    cursor.execute(
+        f"SELECT points FROM customers WHERE id={p()}",
+        (id_number,)
+    )
 
-        button {
-            padding: 12px 20px;
-            background: orange;
-            border: none;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-    </style>
-</head>
+    current_points = cursor.fetchone()[0]
 
-<body>
+    if current_points >= 150:
 
-<div class="card">
+        cursor.execute(
+            f"UPDATE customers SET points = points - 150 WHERE id={p()}",
+            (id_number,)
+        )
 
-    <div class="message">
-        {{ message }}
-    </div>
+        cursor.execute(
+            f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
+            (id_number, -150, -2, "Reward redeemed")
+        )
 
-    <div class="sub">
-        Make sure this is applied on the till
-    </div>
+        conn.commit()
 
-    <a href="/scan">
-        <button>Back to Scan</button>
-    </a>
+        message = "Apply £2 discount on till"
 
-</div>
+    else:
+        message = "Not enough points"
 
-</body>
-</html>
+    conn.close()
+
+    return render_template("redeem.html", message=message)
