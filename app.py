@@ -16,8 +16,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SQLITE_PATH = os.path.join(BASE_DIR, "customers.db")
 QR_DIR = os.path.join(BASE_DIR, "static", "qrcodes")
 
-STAFF_USERNAME = "admin"
-STAFF_PASSWORD = "newport123"
+STAFF_USERNAME = os.getenv("STAFF_USERNAME", "admin")
+STAFF_PASSWORD = os.getenv("STAFF_PASSWORD", "newport1003!")
 
 
 # -------------------------
