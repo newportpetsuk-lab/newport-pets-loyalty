@@ -323,41 +323,34 @@ def redeem():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # -------------------------
-    # GET CURRENT POINTS
-    # -------------------------
+    # Get current points
     cursor.execute(
         f"SELECT points FROM customers WHERE id={p()}",
         (id_number,)
     )
     current_points = cursor.fetchone()[0]
 
-    # -------------------------
-    # SIMPLE REDEEM LOGIC (NO BLOCKING)
-    # -------------------------
+    # Get amount from button
     redeem_amount = int(request.form.get("redeem_amount", 2))
     print("DEBUG redeem_amount:", redeem_amount)
 
-points_needed = (redeem_amount // 2) * 150
+    # Convert £ → points
+    points_needed = (redeem_amount // 2) * 150
 
-if current_points >= points_needed:
+    if current_points >= points_needed:
 
-    cursor.execute(
-        f"UPDATE customers SET points = points - {p()} WHERE id={p()}",
-        (points_needed, id_number)
-    )
+        cursor.execute(
+            f"UPDATE customers SET points = points - {p()} WHERE id={p()}",
+            (points_needed, id_number)
+        )
 
-    cursor.execute(
-        f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
-        (id_number, -points_needed, -redeem_amount, "Reward redeemed")
-    )
+        cursor.execute(
+            f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
+            (id_number, -points_needed, -redeem_amount, "Reward redeemed")
+        )
 
-    conn.commit()
-
-    message = f"Apply £{redeem_amount} discount on till"
-
-else:
-    message = "Not enough points"
+        conn.commit()
+        message = f"Apply £{redeem_amount} discount on till"
 
     else:
         message = "Not enough points"
