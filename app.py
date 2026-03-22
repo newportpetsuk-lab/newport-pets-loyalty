@@ -490,7 +490,7 @@ def dashboard():
         total_points=total_points,
         total_rewards=total_rewards
     )
-    @app.route("/history/<customer_id>")
+@app.route("/history/<customer_id>")
 def history(customer_id):
 
     if not session.get("logged_in"):
