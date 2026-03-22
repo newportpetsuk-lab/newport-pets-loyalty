@@ -338,27 +338,30 @@ def redeem():
     current_points = cursor.fetchone()[0]
 
     # -------------------------
-# GET LAST TRANSACTION TYPE
-# -------------------------
-cursor.execute(
-    f"""
-    SELECT reason 
-    FROM transactions 
-    WHERE customer_id={p()} 
-    ORDER BY timestamp DESC 
-    LIMIT 1
-    """,
-    (id_number,)
-)
-
-last_transaction = cursor.fetchone()
-
-if last_transaction and last_transaction[0] == "Purchase":
-    conn.close()
-    return render_template(
-        "redeem.html",
-        message="Rewards available next visit"
+    # GET LAST TRANSACTION TYPE
+    # -------------------------
+    cursor.execute(
+        f"""
+        SELECT reason
+        FROM transactions
+        WHERE customer_id={p()}
+        ORDER BY timestamp DESC
+        LIMIT 1
+        """,
+        (id_number,)
     )
+
+    last_transaction = cursor.fetchone()
+
+    if last_transaction is not None:
+        last_reason = last_transaction[0]
+
+        if last_reason == "Purchase":
+            conn.close()
+            return render_template(
+                "redeem.html",
+                message="Rewards available next visit"
+            )
 
     # -------------------------
     # NORMAL REDEEM LOGIC
