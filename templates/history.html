@@ -58,7 +58,9 @@ border-bottom:1px solid #ddd;
 {% for t in transactions %}
 
 <tr>
-<td>{{ t[0] }}</td>
+<td style="color:{% if t[0] >= 0 %}green{% else %}red{% endif %}">
+    {{ t[0] }}
+</td>
 <td>{{ t[1] }}</td>
 <td>{{ t[2] }}</td>
 <td>{{ t[3] }}</td>
