@@ -338,48 +338,48 @@ def redeem():
     )
     current_points = cursor.fetchone()[0]
 
-# -------------------------
-# GET LAST TRANSACTION TYPE + TIME
-# -------------------------
-cursor.execute(
-    f"""
-    SELECT reason, timestamp
-    FROM transactions
-    WHERE customer_id={p()}
-    ORDER BY timestamp DESC
-    LIMIT 1
-    """,
-    (id_number,)
-)
+    # -------------------------
+    # GET LAST TRANSACTION TYPE + TIME
+    # -------------------------
+    cursor.execute(
+        f"""
+        SELECT reason, timestamp
+        FROM transactions
+        WHERE customer_id={p()}
+        ORDER BY timestamp DESC
+        LIMIT 1
+        """,
+        (id_number,)
+    )
 
-last_transaction = cursor.fetchone()
+    last_transaction = cursor.fetchone()
 
-if last_transaction is not None:
-    last_reason = last_transaction[0]
-    last_time = last_transaction[1]
+    if last_transaction is not None:
+        last_reason = last_transaction[0]
+        last_time = last_transaction[1]
 
-    # Convert to datetime properly
-    if isinstance(last_time, str):
-        try:
-            last_time = datetime.fromisoformat(last_time.replace("Z", ""))
-        except:
-            # fallback: don't block if parsing fails
-            last_time = None
+        # Convert to datetime properly
+        if isinstance(last_time, str):
+            try:
+                last_time = datetime.fromisoformat(last_time.replace("Z", ""))
+            except:
+                # fallback: don't block if parsing fails
+                last_time = None
 
-    # Only block if we successfully got a datetime
-    if last_reason == "Purchase" and last_time is not None:
-        time_diff = datetime.now() - last_time
+        # Only block if we successfully got a datetime
+        if last_reason == "Purchase" and last_time is not None:
+            time_diff = datetime.now() - last_time
 
-        # DEBUG (you can remove later)
-        print("Last transaction:", last_reason)
-        print("Time difference:", time_diff)
+            # DEBUG (you can remove later)
+            print("Last transaction:", last_reason)
+            print("Time difference:", time_diff)
 
-        if time_diff < timedelta(minutes=2):
+            if time_diff < timedelta(minutes=2):
             conn.close()
-            return render_template(
-                "redeem.html",
-                message="Rewards available next visit"
-            )
+                return render_template(
+                    "redeem.html",
+                    message="Rewards available next visit"
+                )
 
     # -------------------------
     # NORMAL REDEEM LOGIC
