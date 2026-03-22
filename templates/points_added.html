@@ -111,28 +111,13 @@
     {% endif %}
 
     <!-- REWARD SECTION -->
-    {% if reward_count > 0 %}
-    <div class="card reward">
-        <div class="big">£{{ reward_value }} AVAILABLE</div>
-        <p>{{ reward_count }} reward(s)</p>
-
-        <form method="POST" action="/redeem_custom">
-
-            <input type="hidden" name="customer_id" value="{{ customer_id }}">
-
-            <button class="btn-green" name="redeem_value" value="2">£2</button>
-
-            {% if reward_value >= 4 %}
-            <button class="btn-orange" name="redeem_value" value="4">£4</button>
-            {% endif %}
-
-            <button class="btn-red" name="redeem_value" value="{{ reward_value }}">
-                ALL (£{{ reward_value }})
-            </button>
-
-        </form>
-    </div>
-    {% endif %}
+    <!-- REWARD INFO ONLY -->
+{% if reward_count > 0 %}
+<div class="card reward">
+    <div class="big">£{{ reward_value }} earned today</div>
+    <p>Use on your next visit</p>
+</div>
+{% endif %}
 
 </div>
 
