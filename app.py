@@ -338,14 +338,11 @@ def redeem():
     current_points = cursor.fetchone()[0]
 
     # -------------------------
-    # GET LAST TRANSACTION TIME
-    # -------------------------
-    # -------------------------
-# GET LAST TRANSACTION TIME
+# GET LAST TRANSACTION TYPE
 # -------------------------
 cursor.execute(
     f"""
-    SELECT timestamp 
+    SELECT reason 
     FROM transactions 
     WHERE customer_id={p()} 
     ORDER BY timestamp DESC 
@@ -356,21 +353,12 @@ cursor.execute(
 
 last_transaction = cursor.fetchone()
 
-if last_transaction:
-    last_time = last_transaction[0]
-
-    if isinstance(last_time, str):
-        try:
-            last_time = datetime.fromisoformat(last_time)
-        except:
-            last_time = datetime.now()
-
-    if datetime.now() - last_time < timedelta(hours=2):
-        conn.close()
-        return render_template(
-            "redeem.html",
-            message="Rewards available next visit"
-        )
+if last_transaction and last_transaction[0] == "Purchase":
+    conn.close()
+    return render_template(
+        "redeem.html",
+        message="Rewards available next visit"
+    )
 
     # -------------------------
     # NORMAL REDEEM LOGIC
