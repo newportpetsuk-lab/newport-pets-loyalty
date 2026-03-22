@@ -13,6 +13,10 @@ app.secret_key = "change_this_to_a_random_secret_key"
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# 🔥 FIX FOR RENDER POSTGRES
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SQLITE_PATH = os.path.join(BASE_DIR, "customers.db")
 QR_DIR = os.path.join(BASE_DIR, "static", "qrcodes")
@@ -32,7 +36,7 @@ def is_postgres():
 def get_connection():
     if is_postgres():
         import psycopg2
-        return psycopg2.connect(DATABASE_URL)
+        return psycopg2.connect(DATABASE_URL, connect_timeout=5)  # 🔥 added timeout
     else:
         return sqlite3.connect(SQLITE_PATH)
 
@@ -311,7 +315,7 @@ def addpoints():
         new_points=new_points,
         earned_today=earned_today,
         total_rewards=total_rewards
-)
+    )
 
 
 @app.route("/redeem", methods=["POST"])
@@ -326,18 +330,13 @@ def redeem():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Get current points
     cursor.execute(
         f"SELECT points FROM customers WHERE id={p()}",
         (id_number,)
     )
     current_points = cursor.fetchone()[0]
 
-    # Get amount from button
     redeem_amount = int(request.form.get("redeem_amount", 2))
-    print("DEBUG redeem_amount:", redeem_amount)
-
-    # Convert £ → points
     points_needed = (redeem_amount // 2) * 150
 
     if current_points >= points_needed:
@@ -361,6 +360,7 @@ def redeem():
     conn.close()
 
     return render_template("redeem.html", message=message)
+
 
 # -------------------------
 # LOYALTY
@@ -425,6 +425,8 @@ def loyalty():
         reward_value=reward_value,
         remaining_spend=remaining_spend
     )
+
+
 @app.route("/dashboard")
 def dashboard():
 
@@ -434,15 +436,12 @@ def dashboard():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Total customers
     cursor.execute("SELECT COUNT(*) FROM customers")
     total_customers = cursor.fetchone()[0]
 
-    # Total points issued
     cursor.execute("SELECT SUM(points) FROM transactions WHERE points > 0")
     total_points = cursor.fetchone()[0] or 0
 
-    # Total rewards redeemed (£)
     cursor.execute("SELECT SUM(amount) FROM transactions WHERE amount < 0")
     total_rewards = abs(cursor.fetchone()[0] or 0)
 
@@ -454,6 +453,8 @@ def dashboard():
         total_points=total_points,
         total_rewards=total_rewards
     )
+
+
 @app.route("/history/<customer_id>")
 def history(customer_id):
 
@@ -476,11 +477,11 @@ def history(customer_id):
         transactions=transactions,
         customer_id=customer_id
     )
+
+
 # -------------------------
 # RUN
 # -------------------------
-
-import os
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
