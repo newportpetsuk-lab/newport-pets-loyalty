@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, session, redirect, url_for
 import sqlite3
 import qrcode
 import os
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.secret_key = "change_this_to_a_random_secret_key"
@@ -337,31 +338,40 @@ def redeem():
     )
     current_points = cursor.fetchone()[0]
 
-    # -------------------------
-    # GET LAST TRANSACTION TYPE
-    # -------------------------
-    cursor.execute(
-        f"""
-        SELECT reason
-        FROM transactions
-        WHERE customer_id={p()}
-        ORDER BY timestamp DESC
-        LIMIT 1
-        """,
-        (id_number,)
-    )
+# -------------------------
+# GET LAST TRANSACTION TYPE + TIME
+# -------------------------
+cursor.execute(
+    f"""
+    SELECT reason, timestamp
+    FROM transactions
+    WHERE customer_id={p()}
+    ORDER BY timestamp DESC
+    LIMIT 1
+    """,
+    (id_number,)
+)
 
-    last_transaction = cursor.fetchone()
+last_transaction = cursor.fetchone()
 
-    if last_transaction is not None:
-        last_reason = last_transaction[0]
+if last_transaction is not None:
+    last_reason = last_transaction[0]
+    last_time = last_transaction[1]
 
-        if last_reason == "Purchase":
-            conn.close()
-            return render_template(
-                "redeem.html",
-                message="Rewards available next visit"
-            )
+    # Convert string → datetime if needed
+    if isinstance(last_time, str):
+        try:
+            last_time = datetime.fromisoformat(last_time)
+        except:
+            last_time = datetime.now()
+
+    # 🚫 Block ONLY if purchase was just now (within 2 minutes)
+    if last_reason == "Purchase" and datetime.now() - last_time < timedelta(minutes=2):
+        conn.close()
+        return render_template(
+            "redeem.html",
+            message="Rewards available next visit"
+        )
 
     # -------------------------
     # NORMAL REDEEM LOGIC
