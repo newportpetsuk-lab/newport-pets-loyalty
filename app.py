@@ -296,8 +296,8 @@ def addpoints():
     conn.close()
 
     new_points = customer[2]
-    reward_count = new_points // 150
-    reward_value = reward_count * 2
+    earned_today = points // 150 * 2
+    total_rewards = new_points // 150 * 2
 
     return render_template(
         "points_added.html",
@@ -306,9 +306,9 @@ def addpoints():
         customer_id=customer_id,
         points_added=points,
         new_points=new_points,
-        reward_count=reward_count,
-        reward_value=reward_value
-    )
+        earned_today=earned_today,
+        total_rewards=total_rewards
+)
 
 
 @app.route("/redeem", methods=["POST"])
@@ -335,21 +335,28 @@ def redeem():
     # -------------------------
     # SIMPLE REDEEM LOGIC (NO BLOCKING)
     # -------------------------
-    if current_points >= 150:
+    redeem_amount = int(request.form.get("redeem_amount", 2))
 
-        cursor.execute(
-            f"UPDATE customers SET points = points - 150 WHERE id={p()}",
-            (id_number,)
-        )
+points_needed = (redeem_amount // 2) * 150
 
-        cursor.execute(
-            f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
-            (id_number, -150, -2, "Reward redeemed")
-        )
+if current_points >= points_needed:
 
-        conn.commit()
+    cursor.execute(
+        f"UPDATE customers SET points = points - {p()} WHERE id={p()}",
+        (points_needed, id_number)
+    )
 
-        message = "Apply £2 discount on till"
+    cursor.execute(
+        f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
+        (id_number, -points_needed, -redeem_amount, "Reward redeemed")
+    )
+
+    conn.commit()
+
+    message = f"Apply £{redeem_amount} discount on till"
+
+else:
+    message = "Not enough points"
 
     else:
         message = "Not enough points"
