@@ -490,6 +490,31 @@ def dashboard():
         total_points=total_points,
         total_rewards=total_rewards
     )
+    @app.route("/history/<customer_id>")
+def history(customer_id):
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    numeric_id = int(customer_id.replace("NP", ""))
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT points, amount, reason, timestamp FROM transactions WHERE customer_id=" + p() + " ORDER BY timestamp DESC",
+        (numeric_id,)
+    )
+
+    transactions = cursor.fetchall()
+
+    conn.close()
+
+    return render_template(
+        "history.html",
+        transactions=transactions,
+        customer_id=customer_id
+    )
 # -------------------------
 # RUN
 # -------------------------
