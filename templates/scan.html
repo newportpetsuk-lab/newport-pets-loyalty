@@ -89,23 +89,6 @@
 >
 </form>
 
-<script>
-    const scanner = document.getElementById("scanner");
-    const form = document.getElementById("scanForm");
-
-    let submitted = false;
-
-    scanner.addEventListener("input", function() {
-        if (!submitted && scanner.value.length >= 6) {
-            submitted = true;
-            setTimeout(() => {
-                scanner.value = "";
-                form.submit();
-            }, 100);
-        }
-    });
-</script>
-
     {% if error %}
         <p style="color:red;">{{ error }}</p>
     {% endif %}
