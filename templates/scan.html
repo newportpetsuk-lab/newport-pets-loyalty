@@ -93,9 +93,15 @@
     const scanner = document.getElementById("scanner");
     const form = document.getElementById("scanForm");
 
+    let submitted = false;
+
     scanner.addEventListener("input", function() {
-        if (scanner.value.length >= 6) {
-            form.submit();
+        if (!submitted && scanner.value.length >= 6) {
+            submitted = true;
+            setTimeout(() => {
+                scanner.value = "";
+                form.submit();
+            }, 100);
         }
     });
 </script>
