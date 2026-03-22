@@ -336,6 +336,7 @@ def redeem():
     # SIMPLE REDEEM LOGIC (NO BLOCKING)
     # -------------------------
     redeem_amount = int(request.form.get("redeem_amount", 2))
+    print("DEBUG redeem_amount:", redeem_amount)
 
 points_needed = (redeem_amount // 2) * 150
 
