@@ -358,20 +358,28 @@ if last_transaction is not None:
     last_reason = last_transaction[0]
     last_time = last_transaction[1]
 
-    # Convert string → datetime if needed
+    # Convert to datetime properly
     if isinstance(last_time, str):
         try:
-            last_time = datetime.fromisoformat(last_time)
+            last_time = datetime.fromisoformat(last_time.replace("Z", ""))
         except:
-            last_time = datetime.now()
+            # fallback: don't block if parsing fails
+            last_time = None
 
-    # 🚫 Block ONLY if purchase was just now (within 2 minutes)
-    if last_reason == "Purchase" and datetime.now() - last_time < timedelta(minutes=2):
-        conn.close()
-        return render_template(
-            "redeem.html",
-            message="Rewards available next visit"
-        )
+    # Only block if we successfully got a datetime
+    if last_reason == "Purchase" and last_time is not None:
+        time_diff = datetime.now() - last_time
+
+        # DEBUG (you can remove later)
+        print("Last transaction:", last_reason)
+        print("Time difference:", time_diff)
+
+        if time_diff < timedelta(minutes=2):
+            conn.close()
+            return render_template(
+                "redeem.html",
+                message="Rewards available next visit"
+            )
 
     # -------------------------
     # NORMAL REDEEM LOGIC
