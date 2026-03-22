@@ -113,7 +113,10 @@ def init_db():
     os.makedirs(QR_DIR, exist_ok=True)
 
 
-init_db()
+try:
+    init_db()
+except Exception as e:
+    print("DB INIT ERROR:", e)
 
 
 # -------------------------
