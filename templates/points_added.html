@@ -112,10 +112,10 @@
 
     <!-- REWARD SECTION -->
     <!-- REWARD INFO ONLY -->
-{% if reward_count > 0 %}
+{% if earned_today > 0 %}
 <div class="card reward">
-    <div class="big">£{{ reward_value }} earned today</div>
-    <p>Use on your next visit</p>
+    <div class="big">£{{ earned_today }} earned today</div>
+    <p>You now have £{{ total_rewards }} in rewards</p>
 </div>
 {% endif %}
 
