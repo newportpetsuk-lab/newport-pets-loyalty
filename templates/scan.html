@@ -80,6 +80,7 @@
 
     <form method="POST" id="scanForm">
     <input 
+    id="scanner"
     type="text" 
     name="customer_id" 
     placeholder="Scan QR code" 
@@ -127,21 +128,17 @@
     <input type="hidden" name="customer_id" value="{{ customer_id }}">
 
     {% if customer[3] >= 150 %}
-        <button name="redeem_amount" value="2" style="background:#e53935; margin:5px;">
-            Redeem £2
-        </button>
-    {% endif %}
+        <button type="submit" name="redeem_amount" value="2" style="background:#e53935; margin:5px;">
+    Redeem £2
+</button>
 
-    {% if customer[3] >= 300 %}
-        <button name="redeem_amount" value="4" style="background:#c62828; margin:5px;">
-            Redeem £4
-        </button>
-    {% endif %}
+<button type="submit" name="redeem_amount" value="4" style="background:#c62828; margin:5px;">
+    Redeem £4
+</button>
 
-    {% if customer[3] >= 450 %}
-        <button name="redeem_amount" value="6" style="background:#b71c1c; margin:5px;">
-            Redeem £6
-        </button>
+<button type="submit" name="redeem_amount" value="6" style="background:#b71c1c; margin:5px;">
+    Redeem £6
+</button>
     {% endif %}
 
 </form>
