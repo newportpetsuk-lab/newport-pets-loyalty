@@ -340,36 +340,37 @@ def redeem():
     # -------------------------
     # GET LAST TRANSACTION TIME
     # -------------------------
-    cursor.execute(
-        f"""
-        SELECT timestamp 
-        FROM transactions 
-        WHERE customer_id={p()} 
-        ORDER BY timestamp DESC 
-        LIMIT 1
-        """,
-        (id_number,)
-    )
+    # -------------------------
+# GET LAST TRANSACTION TIME
+# -------------------------
+cursor.execute(
+    f"""
+    SELECT timestamp 
+    FROM transactions 
+    WHERE customer_id={p()} 
+    ORDER BY timestamp DESC 
+    LIMIT 1
+    """,
+    (id_number,)
+)
 
-    last_transaction = cursor.fetchone()
+last_transaction = cursor.fetchone()
 
-    if last_transaction:
-        last_time = last_transaction[0]
+if last_transaction:
+    last_time = last_transaction[0]
 
-        # Convert string → datetime if needed
-        if isinstance(last_time, str):
-            try:
-                last_time = datetime.fromisoformat(last_time)
-            except:
-                last_time = datetime.now()
+    if isinstance(last_time, str):
+        try:
+            last_time = datetime.fromisoformat(last_time)
+        except:
+            last_time = datetime.now()
 
-        # 🚫 BLOCK immediate redemption (within 2 hours)
-        if datetime.now() - last_time < timedelta(hours=2):
-            conn.close()
-            return render_template(
-                "redeem.html",
-                message="Rewards available next visit"
-            )
+    if datetime.now() - last_time < timedelta(hours=2):
+        conn.close()
+        return render_template(
+            "redeem.html",
+            message="Rewards available next visit"
+        )
 
     # -------------------------
     # NORMAL REDEEM LOGIC
