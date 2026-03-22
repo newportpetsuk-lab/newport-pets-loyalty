@@ -493,9 +493,6 @@ def dashboard():
 @app.route("/history/<customer_id>")
 def history(customer_id):
 
-    if not session.get("logged_in"):
-        return redirect("/login")
-
     numeric_id = int(customer_id.replace("NP", ""))
 
     conn = get_connection()
