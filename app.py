@@ -38,7 +38,7 @@ Thank you for supporting Newport Pets!
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login("your_email@gmail.com", "your_app_password")
+            server.login("newportpetsuk@gmail.com", "Jonsteinn@93@")
             server.send_message(msg)
     except Exception as e:
         print("EMAIL ERROR:", e)
