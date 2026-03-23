@@ -88,8 +88,8 @@ def signup():
 
         formatted_id = "NP" + str(customer_id).zfill(5)
 
-        qr = qrcode.make(formatted_id)
-        qr.save(os.path.join(QR_DIR, f"qr_{formatted_id}.png"))
+        # qr = qrcode.make(formatted_id)
+        # qr.save(os.path.join(QR_DIR, f"qr_{formatted_id}.png"))
 
         return render_template(
             "welcome.html",
