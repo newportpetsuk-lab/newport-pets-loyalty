@@ -4,4 +4,4 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "TEST VERSION 12345"
+    return "WORKING VERSION OK"
