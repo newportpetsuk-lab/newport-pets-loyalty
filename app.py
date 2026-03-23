@@ -2,20 +2,17 @@ from flask import Flask, render_template, request, session, redirect, url_for
 import sqlite3
 import qrcode
 import os
-from datetime import datetime, timedelta
 
 app = Flask(__name__)
+
+# -------------------------
+# SECRET KEY (FROM ENV)
+# -------------------------
 app.secret_key = os.getenv("SECRET_KEY", "fallback-secret")
 
 # -------------------------
 # CONFIG
 # -------------------------
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-# 🔥 FIX FOR RENDER POSTGRES
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SQLITE_PATH = os.path.join(BASE_DIR, "customers.db")
@@ -24,32 +21,12 @@ QR_DIR = os.path.join(BASE_DIR, "static", "qrcodes")
 STAFF_USERNAME = os.getenv("STAFF_USERNAME", "admin")
 STAFF_PASSWORD = os.getenv("STAFF_PASSWORD", "newport1003!")
 
-
 # -------------------------
-# DATABASE HELPERS
+# DATABASE
 # -------------------------
-
-def is_postgres():
-    return False  # TEMP FIX TO STOP DEPLOY HANG
-
 
 def get_connection():
-    if is_postgres():
-        import psycopg2
-        return psycopg2.connect(DATABASE_URL, connect_timeout=5)  # 🔥 added timeout
-    else:
-        return sqlite3.connect(SQLITE_PATH)
-
-
-def p():
-    return "%s" if is_postgres() else "?"
-
-
-def get_insert_id(cursor):
-    if is_postgres():
-        return cursor.fetchone()[0]
-    else:
-        return cursor.lastrowid
+    return sqlite3.connect(SQLITE_PATH)
 
 
 def parse_customer_id(customer_id):
@@ -57,67 +34,6 @@ def parse_customer_id(customer_id):
     if customer_id.startswith("NP"):
         return int(customer_id[2:])
     return int(customer_id)
-
-
-# -------------------------
-# DATABASE INITIALISATION
-# -------------------------
-
-def init_db():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    if is_postgres():
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS customers(
-            id SERIAL PRIMARY KEY,
-            forename TEXT,
-            surname TEXT,
-            phone TEXT,
-            email TEXT,
-            points INTEGER DEFAULT 0
-        )
-        """)
-
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS transactions(
-            id SERIAL PRIMARY KEY,
-            customer_id INTEGER,
-            points INTEGER,
-            amount REAL,
-            reason TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """)
-    else:
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS customers(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            forename TEXT,
-            surname TEXT,
-            phone TEXT,
-            email TEXT,
-            points INTEGER DEFAULT 0
-        )
-        """)
-
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS transactions(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER,
-            points INTEGER,
-            amount REAL,
-            reason TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-        """)
-
-    conn.commit()
-    conn.close()
-    os.makedirs(QR_DIR, exist_ok=True)
-
-
-print("Skipping DB init for deploy test")
 
 
 # -------------------------
@@ -174,24 +90,20 @@ def signup():
         conn = get_connection()
         cursor = conn.cursor()
 
-        if is_postgres():
-            cursor.execute(f"""
-            INSERT INTO customers(forename, surname, phone, email)
-            VALUES({p()}, {p()}, {p()}, {p()})
-            RETURNING id
-            """, (forename, surname, phone, email))
-        else:
-            cursor.execute("""
-            INSERT INTO customers(forename, surname, phone, email)
-            VALUES(?, ?, ?, ?)
-            """, (forename, surname, phone, email))
+        cursor.execute("""
+        INSERT INTO customers(forename, surname, phone, email)
+        VALUES(?, ?, ?, ?)
+        """, (forename, surname, phone, email))
 
-        customer_id = get_insert_id(cursor)
+        customer_id = cursor.lastrowid
 
         conn.commit()
         conn.close()
 
         formatted_id = "NP" + str(customer_id).zfill(5)
+
+        # ✅ CREATE QR FOLDER ONLY WHEN NEEDED
+        os.makedirs(QR_DIR, exist_ok=True)
 
         qr = qrcode.make(formatted_id)
         qr.save(os.path.join(QR_DIR, f"qr_{formatted_id}.png"))
@@ -206,7 +118,7 @@ def signup():
 
 
 # -------------------------
-# SCAN CUSTOMER (PROTECTED)
+# SCAN
 # -------------------------
 
 @app.route("/scan", methods=["GET", "POST"])
@@ -216,15 +128,15 @@ def scan():
         return redirect("/login")
 
     customer = None
-    customer_id = None
     error = None
+    customer_id = None
 
     if request.method == "POST":
 
         customer_id = request.form.get("customer_id", "").strip().upper()
 
         if customer_id == "":
-            error = "Please scan or enter a customer ID"
+            error = "Please scan or enter ID"
             return render_template("scan.html", error=error)
 
         try:
@@ -234,7 +146,7 @@ def scan():
             cursor = conn.cursor()
 
             cursor.execute(
-                f"SELECT id, forename, surname, points FROM customers WHERE id={p()}",
+                "SELECT id, forename, surname, points FROM customers WHERE id=?",
                 (id_number,)
             )
 
@@ -245,7 +157,7 @@ def scan():
                 error = "Customer not found"
 
         except:
-            error = "Invalid customer ID"
+            error = "Invalid ID"
 
     return render_template(
         "scan.html",
@@ -256,7 +168,7 @@ def scan():
 
 
 # -------------------------
-# ADD POINTS (PROTECTED)
+# ADD POINTS
 # -------------------------
 
 @app.route("/addpoints", methods=["POST"])
@@ -280,17 +192,17 @@ def addpoints():
     cursor = conn.cursor()
 
     cursor.execute(
-        f"UPDATE customers SET points = points + {p()} WHERE id={p()}",
+        "UPDATE customers SET points = points + ? WHERE id=?",
         (points, id_number)
     )
 
     cursor.execute(
-        f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
+        "INSERT INTO transactions (customer_id, points, amount, reason) VALUES (?, ?, ?, ?)",
         (id_number, points, total_amount, "Purchase")
     )
 
     cursor.execute(
-        f"SELECT forename, surname, points FROM customers WHERE id={p()}",
+        "SELECT forename, surname, points FROM customers WHERE id=?",
         (id_number,)
     )
 
@@ -300,8 +212,6 @@ def addpoints():
     conn.close()
 
     new_points = customer[2]
-    earned_today = points // 150 * 2
-    total_rewards = new_points // 150 * 2
 
     return render_template(
         "points_added.html",
@@ -309,170 +219,7 @@ def addpoints():
         surname=customer[1],
         customer_id=customer_id,
         points_added=points,
-        new_points=new_points,
-        earned_today=earned_today,
-        total_rewards=total_rewards
-    )
-
-
-@app.route("/redeem", methods=["POST"])
-def redeem():
-
-    if not session.get("logged_in"):
-        return redirect("/login")
-
-    customer_id = request.form["customer_id"]
-    id_number = int(customer_id[2:])
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        f"SELECT points FROM customers WHERE id={p()}",
-        (id_number,)
-    )
-    current_points = cursor.fetchone()[0]
-
-    redeem_amount = int(request.form.get("redeem_amount", 2))
-    points_needed = (redeem_amount // 2) * 150
-
-    if current_points >= points_needed:
-
-        cursor.execute(
-            f"UPDATE customers SET points = points - {p()} WHERE id={p()}",
-            (points_needed, id_number)
-        )
-
-        cursor.execute(
-            f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
-            (id_number, -points_needed, -redeem_amount, "Reward redeemed")
-        )
-
-        conn.commit()
-        message = f"Apply £{redeem_amount} discount on till"
-
-    else:
-        message = "Not enough points"
-
-    conn.close()
-
-    return render_template("redeem.html", message=message)
-
-
-# -------------------------
-# LOYALTY
-# -------------------------
-
-@app.route("/loyalty", methods=["GET", "POST"])
-def loyalty():
-
-    customer = None
-    customer_id = None
-    error = None
-    reward_count = None
-    reward_value = None
-    remaining_spend = None
-
-    if request.method == "POST":
-
-        customer_id = request.form.get("customer_id", "").strip().upper()
-        phone = request.form.get("phone", "").strip()
-
-        if not customer_id or not phone:
-            error = "Please enter both ID and phone number"
-            return render_template("loyalty.html", error=error)
-
-        try:
-            id_number = parse_customer_id(customer_id)
-
-            conn = get_connection()
-            cursor = conn.cursor()
-
-            cursor.execute(
-                f"SELECT forename, surname, points FROM customers WHERE id={p()} AND phone={p()}",
-                (id_number, phone)
-            )
-
-            customer = cursor.fetchone()
-            conn.close()
-
-            if customer:
-                points = customer[2]
-
-                reward_count = points // 150
-                reward_value = reward_count * 2
-
-                remaining_points = 150 - (points % 150)
-                if points % 150 == 0:
-                    remaining_points = 150
-
-                remaining_spend = remaining_points
-            else:
-                error = "Details not found. Please check your ID and phone number."
-
-        except:
-            error = "Invalid details"
-
-    return render_template(
-        "loyalty.html",
-        customer=customer,
-        customer_id=customer_id,
-        error=error,
-        reward_count=reward_count,
-        reward_value=reward_value,
-        remaining_spend=remaining_spend
-    )
-
-
-@app.route("/dashboard")
-def dashboard():
-
-    if not session.get("logged_in"):
-        return redirect(url_for("login"))
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT COUNT(*) FROM customers")
-    total_customers = cursor.fetchone()[0]
-
-    cursor.execute("SELECT SUM(points) FROM transactions WHERE points > 0")
-    total_points = cursor.fetchone()[0] or 0
-
-    cursor.execute("SELECT SUM(amount) FROM transactions WHERE amount < 0")
-    total_rewards = abs(cursor.fetchone()[0] or 0)
-
-    conn.close()
-
-    return render_template(
-        "dashboard.html",
-        total_customers=total_customers,
-        total_points=total_points,
-        total_rewards=total_rewards
-    )
-
-
-@app.route("/history/<customer_id>")
-def history(customer_id):
-
-    numeric_id = int(customer_id.replace("NP", ""))
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT points, amount, reason, timestamp FROM transactions WHERE customer_id=" + p() + " ORDER BY timestamp DESC",
-        (numeric_id,)
-    )
-
-    transactions = cursor.fetchall()
-
-    conn.close()
-
-    return render_template(
-        "history.html",
-        transactions=transactions,
-        customer_id=customer_id
+        new_points=new_points
     )
 
 
