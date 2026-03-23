@@ -241,6 +241,8 @@ def signup():
 
         formatted_id = "NP" + str(customer_id).zfill(5)
 
+        send_email(email, forename, formatted_id)
+
         return render_template(
             "welcome.html",
             forename=forename,
