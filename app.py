@@ -1,3 +1,5 @@
+# version 1.0.1
+
 from flask import Flask, render_template, request, session, redirect, url_for, send_file
 import sqlite3
 import qrcode
