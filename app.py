@@ -1,55 +1,165 @@
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, render_template, request, session, redirect, url_for, send_file
 import sqlite3
 import qrcode
 import os
+import io
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "change_this_to_something_random"
+app.secret_key = "change_this_to_a_random_secret_key"
+
+# -------------------------
+# CONFIG
+# -------------------------
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Fix Render Postgres URL
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "customers.db")
-QR_DIR = os.path.join(BASE_DIR, "static", "qrcodes")
+SQLITE_PATH = os.path.join(BASE_DIR, "customers.db")
 
-os.makedirs(QR_DIR, exist_ok=True)
+STAFF_USERNAME = os.getenv("STAFF_USERNAME", "admin")
+STAFF_PASSWORD = os.getenv("STAFF_PASSWORD", "newport1003!")
 
 # -------------------------
-# DATABASE
+# DATABASE HELPERS
 # -------------------------
 
-def get_db():
-    return sqlite3.connect(DB_PATH)
+def is_postgres():
+    return DATABASE_URL is not None and DATABASE_URL.strip() != ""
+
+
+def get_connection():
+    if is_postgres():
+        import psycopg2
+        return psycopg2.connect(DATABASE_URL, connect_timeout=5)
+    else:
+        return sqlite3.connect(SQLITE_PATH)
+
+
+def p():
+    return "%s" if is_postgres() else "?"
+
+
+def get_insert_id(cursor):
+    if is_postgres():
+        return cursor.fetchone()[0]
+    else:
+        return cursor.lastrowid
+
+
+def parse_customer_id(customer_id):
+    customer_id = customer_id.strip().upper()
+    if customer_id.startswith("NP"):
+        return int(customer_id[2:])
+    return int(customer_id)
+
+
+# -------------------------
+# DATABASE INITIALISATION
+# -------------------------
 
 def init_db():
-    conn = get_db()
+    conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS customers(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        forename TEXT,
-        surname TEXT,
-        phone TEXT,
-        email TEXT,
-        points INTEGER DEFAULT 0
-    )
-    """)
+    if is_postgres():
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS customers(
+            id SERIAL PRIMARY KEY,
+            forename TEXT,
+            surname TEXT,
+            phone TEXT,
+            email TEXT,
+            points INTEGER DEFAULT 0
+        )
+        """)
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS transactions(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer_id INTEGER,
-        points INTEGER,
-        amount REAL,
-        reason TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions(
+            id SERIAL PRIMARY KEY,
+            customer_id INTEGER,
+            points INTEGER,
+            amount REAL,
+            reason TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+    else:
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS customers(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            forename TEXT,
+            surname TEXT,
+            phone TEXT,
+            email TEXT,
+            points INTEGER DEFAULT 0
+        )
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER,
+            points INTEGER,
+            amount REAL,
+            reason TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
 
     conn.commit()
     conn.close()
 
-init_db()
+
+try:
+    init_db()
+except Exception as e:
+    print("DB INIT ERROR:", e)
+
+
+# -------------------------
+# QR GENERATION (FIXED)
+# -------------------------
+
+@app.route("/qr/<customer_id>")
+def generate_qr(customer_id):
+    img = qrcode.make(customer_id)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return send_file(buf, mimetype="image/png")
+
+
+# -------------------------
+# LOGIN
+# -------------------------
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        if username == STAFF_USERNAME and password == STAFF_PASSWORD:
+            session["logged_in"] = True
+            return redirect("/scan")
+        else:
+            error = "Invalid login"
+
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
+
 
 # -------------------------
 # HOME
@@ -58,6 +168,7 @@ init_db()
 @app.route("/")
 def home():
     return render_template("signup.html")
+
 
 # -------------------------
 # SIGNUP
@@ -73,23 +184,27 @@ def signup():
         phone = request.form["phone"]
         email = request.form["email"]
 
-        conn = get_db()
+        conn = get_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
-        INSERT INTO customers(forename, surname, phone, email)
-        VALUES(?, ?, ?, ?)
-        """, (forename, surname, phone, email))
+        if is_postgres():
+            cursor.execute(f"""
+            INSERT INTO customers(forename, surname, phone, email)
+            VALUES({p()}, {p()}, {p()}, {p()})
+            RETURNING id
+            """, (forename, surname, phone, email))
+        else:
+            cursor.execute("""
+            INSERT INTO customers(forename, surname, phone, email)
+            VALUES(?, ?, ?, ?)
+            """, (forename, surname, phone, email))
 
-        customer_id = cursor.lastrowid
+        customer_id = get_insert_id(cursor)
 
         conn.commit()
         conn.close()
 
         formatted_id = "NP" + str(customer_id).zfill(5)
-
-        # qr = qrcode.make(formatted_id)
-        # qr.save(os.path.join(QR_DIR, f"qr_{formatted_id}.png"))
 
         return render_template(
             "welcome.html",
@@ -99,32 +214,56 @@ def signup():
 
     return render_template("signup.html")
 
+
 # -------------------------
-# SCAN
+# SCAN CUSTOMER
 # -------------------------
 
 @app.route("/scan", methods=["GET", "POST"])
 def scan():
 
+    if not session.get("logged_in"):
+        return redirect("/login")
+
     customer = None
+    customer_id = None
     error = None
 
     if request.method == "POST":
 
-        customer_id = request.form["customer_id"].replace("NP", "")
+        customer_id = request.form.get("customer_id", "").strip().upper()
 
-        conn = get_db()
-        cursor = conn.cursor()
+        if customer_id == "":
+            error = "Please scan or enter a customer ID"
+            return render_template("scan.html", error=error)
 
-        cursor.execute("SELECT id, forename, surname, points FROM customers WHERE id=?", (customer_id,))
-        customer = cursor.fetchone()
+        try:
+            id_number = parse_customer_id(customer_id)
 
-        conn.close()
+            conn = get_connection()
+            cursor = conn.cursor()
 
-        if not customer:
-            error = "Customer not found"
+            cursor.execute(
+                f"SELECT id, forename, surname, points FROM customers WHERE id={p()}",
+                (id_number,)
+            )
 
-    return render_template("scan.html", customer=customer, error=error)
+            customer = cursor.fetchone()
+            conn.close()
+
+            if not customer:
+                error = "Customer not found"
+
+        except:
+            error = "Invalid customer ID"
+
+    return render_template(
+        "scan.html",
+        customer=customer,
+        customer_id=customer_id,
+        error=error
+    )
+
 
 # -------------------------
 # ADD POINTS
@@ -133,25 +272,58 @@ def scan():
 @app.route("/addpoints", methods=["POST"])
 def addpoints():
 
-    customer_id = request.form["customer_id"].replace("NP", "")
-    amount = float(request.form["amount"])
+    if not session.get("logged_in"):
+        return redirect("/login")
 
-    points = int(amount)
+    customer_id = request.form["customer_id"].strip().upper()
 
-    conn = get_db()
+    fish_amount = float(request.form.get("fish_amount", "0") or 0)
+    other_amount = float(request.form.get("other_amount", "0") or 0)
+    excluded_amount = float(request.form.get("excluded_amount", "0") or 0)
+
+    points = int(fish_amount * 2 + other_amount)
+    total_amount = fish_amount + other_amount + excluded_amount
+
+    id_number = parse_customer_id(customer_id)
+
+    conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("UPDATE customers SET points = points + ? WHERE id=?", (points, customer_id))
+    cursor.execute(
+        f"UPDATE customers SET points = points + {p()} WHERE id={p()}",
+        (points, id_number)
+    )
 
-    cursor.execute("""
-    INSERT INTO transactions (customer_id, points, amount, reason)
-    VALUES (?, ?, ?, ?)
-    """, (customer_id, points, amount, "Purchase"))
+    cursor.execute(
+        f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
+        (id_number, points, total_amount, "Purchase")
+    )
+
+    cursor.execute(
+        f"SELECT forename, surname, points FROM customers WHERE id={p()}",
+        (id_number,)
+    )
+
+    customer = cursor.fetchone()
 
     conn.commit()
     conn.close()
 
-    return redirect("/scan")
+    new_points = customer[2]
+    earned_today = points // 150 * 2
+    total_rewards = new_points // 150 * 2
+
+    return render_template(
+        "points_added.html",
+        forename=customer[0],
+        surname=customer[1],
+        customer_id=customer_id,
+        points_added=points,
+        new_points=new_points,
+        earned_today=earned_today,
+        total_rewards=total_rewards
+    )
+
 
 # -------------------------
 # REDEEM
@@ -160,28 +332,38 @@ def addpoints():
 @app.route("/redeem", methods=["POST"])
 def redeem():
 
-    customer_id = request.form["customer_id"].replace("NP", "")
-    redeem_amount = int(request.form.get("redeem_amount", 2))
+    if not session.get("logged_in"):
+        return redirect("/login")
 
-    points_needed = (redeem_amount // 2) * 150
+    customer_id = request.form["customer_id"]
+    id_number = int(customer_id[2:])
 
-    conn = get_db()
+    conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT points FROM customers WHERE id=?", (customer_id,))
+    cursor.execute(
+        f"SELECT points FROM customers WHERE id={p()}",
+        (id_number,)
+    )
     current_points = cursor.fetchone()[0]
+
+    redeem_amount = int(request.form.get("redeem_amount", 2))
+    points_needed = (redeem_amount // 2) * 150
 
     if current_points >= points_needed:
 
-        cursor.execute("UPDATE customers SET points = points - ? WHERE id=?", (points_needed, customer_id))
+        cursor.execute(
+            f"UPDATE customers SET points = points - {p()} WHERE id={p()}",
+            (points_needed, id_number)
+        )
 
-        cursor.execute("""
-        INSERT INTO transactions (customer_id, points, amount, reason)
-        VALUES (?, ?, ?, ?)
-        """, (customer_id, -points_needed, -redeem_amount, "Reward redeemed"))
+        cursor.execute(
+            f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
+            (id_number, -points_needed, -redeem_amount, "Reward redeemed")
+        )
 
         conn.commit()
-        message = f"Apply £{redeem_amount} discount"
+        message = f"Apply £{redeem_amount} discount on till"
 
     else:
         message = "Not enough points"
@@ -190,26 +372,34 @@ def redeem():
 
     return render_template("redeem.html", message=message)
 
+
 # -------------------------
-# HISTORY
+# DASHBOARD
 # -------------------------
 
-@app.route("/history/<customer_id>")
-def history(customer_id):
+@app.route("/dashboard")
+def dashboard():
 
-    customer_id = customer_id.replace("NP", "")
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
 
-    conn = get_db()
+    conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-    SELECT points, amount, reason, timestamp
-    FROM transactions
-    WHERE customer_id=?
-    ORDER BY timestamp DESC
-    """, (customer_id,))
+    cursor.execute("SELECT COUNT(*) FROM customers")
+    total_customers = cursor.fetchone()[0]
 
-    transactions = cursor.fetchall()
+    cursor.execute("SELECT SUM(points) FROM transactions WHERE points > 0")
+    total_points = cursor.fetchone()[0] or 0
+
+    cursor.execute("SELECT SUM(amount) FROM transactions WHERE amount < 0")
+    total_rewards = abs(cursor.fetchone()[0] or 0)
+
     conn.close()
 
-    return render_template("history.html", transactions=transactions, customer_id=customer_id)
+    return render_template(
+        "dashboard.html",
+        total_customers=total_customers,
+        total_points=total_points,
+        total_rewards=total_rewards
+    )
