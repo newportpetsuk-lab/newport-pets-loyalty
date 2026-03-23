@@ -4,4 +4,4 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "LOYALTY APP IS LIVE ✅"
+    return "TEST VERSION 12345"
