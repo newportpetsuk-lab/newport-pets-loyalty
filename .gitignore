@@ -1,0 +1,3 @@
+static/qrcodes/
+__pycache__/
+*.db
