@@ -228,6 +228,7 @@ def scan():
     customer = None
     customer_id = None
     error = None
+    redeem_options = []   # ✅ ALWAYS defined
 
     if request.method == "POST":
 
@@ -251,7 +252,16 @@ def scan():
             customer = cursor.fetchone()
             conn.close()
 
-            if not customer:
+            if customer:
+                points = customer[3]
+
+                # ✅ Calculate available rewards
+                max_rewards = points // 150
+
+                for i in range(1, max_rewards + 1):
+                    redeem_options.append(i * 2)
+
+            else:
                 error = "Customer not found"
 
         except:
@@ -261,7 +271,8 @@ def scan():
         "scan.html",
         customer=customer,
         customer_id=customer_id,
-        error=error
+        error=error,
+        redeem_options=redeem_options
     )
 
 
