@@ -404,6 +404,40 @@ def history(customer_id):
         transactions=transactions,
         customer_id=customer_id
     )
+
+@app.route("/lookup", methods=["POST"])
+def lookup():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    query = request.form.get("query", "").strip()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    if is_postgres():
+        cursor.execute(
+            f"SELECT id, forename, surname, phone, points FROM customers WHERE phone ILIKE {p()} OR forename ILIKE {p()} OR surname ILIKE {p()} LIMIT 10",
+            (f"%{query}%", f"%{query}%", f"%{query}%")
+        )
+    else:
+        cursor.execute(
+            """
+            SELECT id, forename, surname, phone, points
+            FROM customers
+            WHERE phone LIKE ? OR forename LIKE ? OR surname LIKE ?
+            LIMIT 10
+            """,
+            (f"%{query}%", f"%{query}%", f"%{query}%")
+        )
+
+    results = cursor.fetchall()
+    conn.close()
+
+    return render_template("lookup.html", results=results)
+
+
 # -------------------------
 # REDEEM
 # -------------------------
