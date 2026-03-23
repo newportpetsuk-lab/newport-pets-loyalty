@@ -422,31 +422,6 @@ def redeem():
 
     return render_template("redeem.html", message=message)
 
-@app.route("/history/<customer_id>")
-def history(customer_id):
-
-    try:
-        numeric_id = int(customer_id.replace("NP", ""))
-    except:
-        return "Invalid customer ID"
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        f"SELECT points, amount, reason, timestamp FROM transactions WHERE customer_id={p()} ORDER BY timestamp DESC",
-        (numeric_id,)
-    )
-
-    transactions = cursor.fetchall()
-    conn.close()
-
-    return render_template(
-        "history.html",
-        transactions=transactions,
-        customer_id=customer_id
-    )
-
 # -------------------------
 # DASHBOARD
 # -------------------------
