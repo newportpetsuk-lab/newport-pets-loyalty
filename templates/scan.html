@@ -113,24 +113,26 @@
 
         {% if customer[3] >= 150 %}
 
-<form method="POST" action="/redeem" style="display:inline;">
-    <input type="hidden" name="customer_id" value="{{ customer_id }}">
+{% if redeem_options %}
 
-    {% if customer[3] >= 150 %}
-        <button type="submit" name="redeem_amount" value="2" style="background:#e53935; margin:5px;">
-    Redeem £2
-</button>
+    <h3>Redeem Rewards</h3>
 
-<button type="submit" name="redeem_amount" value="4" style="background:#c62828; margin:5px;">
-    Redeem £4
-</button>
+    {% for amount in redeem_options %}
+    <form method="POST" action="/redeem" style="display:inline;">
+        <input type="hidden" name="customer_id" value="{{ customer_id }}">
+        <input type="hidden" name="redeem_amount" value="{{ amount }}">
 
-<button type="submit" name="redeem_amount" value="6" style="background:#b71c1c; margin:5px;">
-    Redeem £6
-</button>
-    {% endif %}
+        <button type="submit" style="background:#e53935; margin:5px;">
+            Redeem £{{ amount }}
+        </button>
+    </form>
+    {% endfor %}
 
-</form>
+{% else %}
+    <button type="button" disabled style="background:grey; margin:5px;">
+        Need {{ 150 - customer[3] }} more points
+    </button>
+{% endif %}
 
 {% else %}
     <button type="button" disabled style="background:grey; margin:5px; cursor:not-allowed;">
