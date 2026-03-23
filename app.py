@@ -4,9 +4,44 @@ import qrcode
 import os
 import io
 from datetime import datetime
+import smtplib
+from email.mime.text import MIMEText
 
 app = Flask(__name__)
 app.secret_key = "change_this_to_a_random_secret_key"
+
+# -------------------------
+# EMAIL FUNCTION
+# -------------------------
+
+def send_email(to_email, forename, customer_id):
+
+    body = f"""
+Hi {forename},
+
+Welcome to Newport Pets Rewards!
+
+Your customer ID: {customer_id}
+
+Show your QR code in-store to collect points.
+
+Visit:
+https://newport-loyalty-final.onrender.com/
+
+Thank you for supporting Newport Pets!
+"""
+
+    msg = MIMEText(body)
+    msg["Subject"] = "Welcome to Newport Pets Rewards"
+    msg["From"] = "your_email@gmail.com"
+    msg["To"] = to_email
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login("your_email@gmail.com", "your_app_password")
+            server.send_message(msg)
+    except Exception as e:
+        print("EMAIL ERROR:", e)
 
 # -------------------------
 # CONFIG
