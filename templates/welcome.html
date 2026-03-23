@@ -46,7 +46,7 @@ h1 {
 
 <h2>{{customer_id}}</h2>
 
-<img src="{{ url_for('static', filename='qrcodes/qr_' + customer_id + '.png') }}" width="200">
+<img src="/qr/{{customer_id}}" width="200">
 
 <p>Show your loyalty QR code every time you shop to collect points.</p>
 
