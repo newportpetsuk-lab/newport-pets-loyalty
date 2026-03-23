@@ -202,7 +202,7 @@ def logout():
 
 @app.route("/")
 def home():
-    return render_template("signup.html")
+    return "TEST OK AGAIN"
 
 
 # -------------------------
