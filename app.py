@@ -117,10 +117,7 @@ def init_db():
     os.makedirs(QR_DIR, exist_ok=True)
 
 
-try:
-    init_db()
-except Exception as e:
-    print("DB INIT ERROR:", e)
+print("Skipping DB init for deploy test")
 
 
 # -------------------------
