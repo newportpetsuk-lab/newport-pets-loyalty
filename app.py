@@ -30,7 +30,7 @@ STAFF_PASSWORD = os.getenv("STAFF_PASSWORD", "newport1003!")
 # -------------------------
 
 def is_postgres():
-    return DATABASE_URL is not None and DATABASE_URL.strip() != ""
+    return False  # TEMP FIX TO STOP DEPLOY HANG
 
 
 def get_connection():
