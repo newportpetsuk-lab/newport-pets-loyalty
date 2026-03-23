@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
-app.secret_key = "change_this_to_a_random_secret_key"
+app.secret_key = os.getenv("SECRET_KEY", "fallback-secret")
 
 # -------------------------
 # CONFIG
