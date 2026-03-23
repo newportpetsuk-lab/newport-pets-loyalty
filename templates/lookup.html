@@ -40,12 +40,11 @@ button:hover{
 background:#e86800;
 }
 
-.redeem{
-background:green;
-}
-
-.redeem:hover{
-background:#0b8a0b;
+.result-box{
+margin-top:15px;
+padding:10px;
+border:1px solid #ddd;
+border-radius:6px;
 }
 
 input{
@@ -64,53 +63,50 @@ margin-top:15px;
 
 <h1>Newport Pets Rewards</h1>
 
-<h3>Lookup Customer</h3>
+<h3>Find Customer</h3>
 
-<form method="post">
-
-<input name="customer_id" placeholder="Scan customer QR" autofocus>
-
-<button type="submit">Lookup Customer</button>
-
+<form method="POST">
+    <input name="customer_id" placeholder="Enter phone or name" autofocus>
+    <button type="submit">Search</button>
 </form>
 
 {% if error %}
-
 <p style="color:red;">{{ error }}</p>
+{% endif %}
+
+{% if results %}
+
+<h3>Results</h3>
+
+{% for c in results %}
+
+<div class="result-box">
+
+    <strong>{{ c[1] }} {{ c[2] }}</strong><br>
+    Phone: {{ c[3] }}<br>
+    Points: {{ c[4] }}
+
+    <form method="POST" action="/scan">
+        <input type="hidden" name="customer_id" value="NP{{ "%05d"|format(c[0]) }}">
+        <button>Select Customer</button>
+    </form>
+
+</div>
+
+{% endfor %}
 
 {% endif %}
 
+<br>
 
-{% if forename %}
-
-<h2>{{ forename }} {{ surname }}</h2>
-
-<p>Customer ID: <strong>{{ customer_id }}</strong></p>
-
-<p>Current points: <strong>{{ points }}</strong></p>
-
-
-{% if points >= 150 %}
-
-<form method="post" action="/redeem">
-
-<input type="hidden" name="customer_id" value="{{ customer_id }}">
-
-<button class="redeem">Redeem £2 Reward (150 points)</button>
-
-</form>
-
-{% else %}
-
-<p style="color:gray;">
-{{ 150 - points }} more points needed for £2 reward
-</p>
-
-{% endif %}
-
-{% endif %}
+<a href="/scan">
+    <button style="background:#2196f3;">
+        Back to Scan
+    </button>
+</a>
 
 </div>
 
 </body>
+
 </html>
