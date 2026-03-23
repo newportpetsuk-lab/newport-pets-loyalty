@@ -361,11 +361,13 @@ def addpoints():
     earned_today = points // 150 * 2
     total_rewards = new_points // 150 * 2
 
+    formatted_id = "NP" + str(id_number).zfill(5)
+
     return render_template(
         "points_added.html",
         forename=customer[0],
         surname=customer[1],
-        customer_id=customer_id,
+        customer_id=formatted_id,   # 👈 FIX HERE
         points_added=points,
         new_points=new_points,
         earned_today=earned_today,
@@ -420,6 +422,30 @@ def redeem():
 
     return render_template("redeem.html", message=message)
 
+@app.route("/history/<customer_id>")
+def history(customer_id):
+
+    try:
+        numeric_id = int(customer_id.replace("NP", ""))
+    except:
+        return "Invalid customer ID"
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        f"SELECT points, amount, reason, timestamp FROM transactions WHERE customer_id={p()} ORDER BY timestamp DESC",
+        (numeric_id,)
+    )
+
+    transactions = cursor.fetchall()
+    conn.close()
+
+    return render_template(
+        "history.html",
+        transactions=transactions,
+        customer_id=customer_id
+    )
 
 # -------------------------
 # DASHBOARD
