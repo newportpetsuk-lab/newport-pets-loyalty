@@ -416,7 +416,7 @@ def lookup():
 
     if request.method == "POST":
 
-        query = request.form.get("customer_id", "").strip()
+        query = request.form.get("query", "").strip()
 
         if query == "":
             error = "Enter name or phone"
