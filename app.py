@@ -8,7 +8,35 @@ import io
 from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
+def send_email(to_email, forename, customer_id):
 
+    body = f"""
+Hi {forename},
+
+Welcome to Newport Pets Rewards!
+
+Your customer ID: {customer_id}
+
+Show your QR code in-store to collect points.
+
+Visit your account:
+https://newport-loyalty-final.onrender.com/
+
+Thank you for supporting Newport Pets!
+"""
+
+    msg = MIMEText(body)
+    msg["Subject"] = "Welcome to Newport Pets Rewards"
+    msg["From"] = "newportpetsuk@gmail.com"
+    msg["To"] = to_email
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif
+")
+            server.send_message(msg)
+    except Exception as e:
+        print("EMAIL ERROR:", e)
 app = Flask(__name__)
 app.secret_key = "change_this_to_a_random_secret_key"
 
