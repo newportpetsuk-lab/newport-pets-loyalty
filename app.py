@@ -19,6 +19,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 QR_DIR = os.path.join(BASE_DIR, "static", "qrcodes")
 
 # -------------------------
+# APP INIT (THIS WAS MISSING)
+# -------------------------
+
+app = Flask(__name__)
+app.secret_key = "change_this_to_a_random_secret_key"
+
+# -------------------------
 # EMAIL FUNCTION
 # -------------------------
 
