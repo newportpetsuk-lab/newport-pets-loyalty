@@ -32,8 +32,7 @@ Thank you for supporting Newport Pets!
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif
-")
+            server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
             server.send_message(msg)
     except Exception as e:
         print("EMAIL ERROR:", e)
