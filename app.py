@@ -39,11 +39,18 @@ Thank you for supporting Newport Pets!
 app = Flask(__name__)
 app.secret_key = "change_this_to_a_random_secret_key"
 
+from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
 # -------------------------
 # EMAIL FUNCTION
 # -------------------------
 
 def send_email(to_email, forename, customer_id):
+
+    msg = MIMEMultipart()
+    msg["Subject"] = "Welcome to Newport Pets Rewards"
+    msg["From"] = "newportpetsuk@gmail.com"
+    msg["To"] = to_email
 
     body = f"""
 Hi {forename},
@@ -52,23 +59,29 @@ Welcome to Newport Pets Rewards!
 
 Your customer ID: {customer_id}
 
-Show your QR code in-store to collect points.
-
-Visit:
-https://newport-loyalty-final.onrender.com/
+Your QR code is attached — save it and show it in-store.
 
 Thank you for supporting Newport Pets!
 """
 
-    msg = MIMEText(body)
-    msg["Subject"] = "Welcome to Newport Pets Rewards"
-    msg["From"] = "your_email@gmail.com"
-    msg["To"] = to_email
+    msg.attach(MIMEText(body, "plain"))
 
     try:
+        # 📎 Attach QR code
+        qr_path = os.path.join(QR_DIR, f"qr_{customer_id}.png")
+
+        with open(qr_path, "rb") as f:
+            img = MIMEImage(f.read())
+            img.add_header("Content-Disposition", "attachment", filename=f"{customer_id}.png")
+            msg.attach(img)
+
+        # 📧 Send email
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
             server.send_message(msg)
+
+        print("EMAIL SENT WITH QR")
+
     except Exception as e:
         print("EMAIL ERROR:", e)
 
