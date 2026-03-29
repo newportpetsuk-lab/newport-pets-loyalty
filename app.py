@@ -17,6 +17,7 @@ from email.mime.image import MIMEImage
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 QR_DIR = os.path.join(BASE_DIR, "static", "qrcodes")
+os.makedirs(QR_DIR, exist_ok=True)
 
 # -------------------------
 # APP INIT (THIS WAS MISSING)
@@ -266,13 +267,18 @@ def signup():
 
         formatted_id = "NP" + str(customer_id).zfill(5)
 
-        send_email(email, forename, formatted_id)
+# ✅ CREATE QR FIRST
+qr = qrcode.make(formatted_id)
+qr.save(os.path.join(QR_DIR, f"qr_{formatted_id}.png"))
 
-        return render_template(
-            "welcome.html",
-            forename=forename,
-            customer_id=formatted_id
-        )
+# ✅ THEN SEND EMAIL
+send_email(email, forename, formatted_id)
+
+return render_template(
+    "welcome.html",
+    forename=forename,
+    customer_id=formatted_id
+)
 
     return render_template("signup.html")
 
