@@ -235,6 +235,10 @@ def home():
 # SIGNUP
 # -------------------------
 
+# -------------------------
+# SIGNUP
+# -------------------------
+
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
 
@@ -267,22 +271,21 @@ def signup():
 
         formatted_id = "NP" + str(customer_id).zfill(5)
 
-# ✅ CREATE QR FIRST
-qr = qrcode.make(formatted_id)
-qr.save(os.path.join(QR_DIR, f"qr_{formatted_id}.png"))
+        # ✅ CREATE QR FIRST (INSIDE POST)
+        qr = qrcode.make(formatted_id)
+        qr.save(os.path.join(QR_DIR, f"qr_{formatted_id}.png"))
 
-# ✅ THEN SEND EMAIL
-send_email(email, forename, formatted_id)
+        # ✅ THEN SEND EMAIL
+        send_email(email, forename, formatted_id)
 
-return render_template(
-    "welcome.html",
-    forename=forename,
-    customer_id=formatted_id
-)
+        return render_template(
+            "welcome.html",
+            forename=forename,
+            customer_id=formatted_id
+        )
 
+    # ✅ THIS MUST ALIGN WITH IF
     return render_template("signup.html")
-
-
 # -------------------------
 # SCAN CUSTOMER
 # -------------------------
