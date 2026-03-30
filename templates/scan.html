@@ -87,12 +87,11 @@
     
     <form method="POST" id="scanForm">
     <input 
-    id="scanner"
+    id="scanInput"
     type="text" 
     name="customer_id" 
     placeholder="Scan QR code" 
-    autofocus 
-    onkeypress="if(event.key === 'Enter'){ this.form.submit(); }"
+    autofocus
 >
 </form>
 
@@ -171,6 +170,14 @@
 
 </div>
 {% endif %}
+<script>
+const input = document.getElementById("scanInput");
 
+input.addEventListener("input", function() {
+    if (input.value.length > 5) {
+        input.form.submit();
+    }
+});
+</script>
 </body>
 </html>
