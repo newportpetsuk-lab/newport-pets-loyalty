@@ -73,6 +73,17 @@ def parse_customer_id(customer_id):
         return int(customer_id[2:])
     return int(customer_id)
 
+def extract_customer_code(raw_input):
+
+    raw_input = raw_input.strip()
+
+    # If full URL scanned
+    if "customer/" in raw_input:
+        return raw_input.split("customer/")[-1].upper()
+
+    # Otherwise normal code
+    return raw_input.upper()
+
 # -------------------------
 # EMAIL FUNCTION
 # -------------------------
@@ -324,10 +335,48 @@ def scan():
 
     if request.method == "POST":
 
-        customer_id = request.form.get("customer_id", "").strip().upper()
+        raw_input = request.form.get("customer_id", "").strip()
 
-        if customer_id == "":
+        if raw_input == "":
             return render_template("scan.html", error="Please scan or enter a customer ID")
+
+        try:
+            # ✅ NEW: extract code from scanner input
+            customer_id = extract_customer_code(raw_input)
+
+            id_number = parse_customer_id(customer_id)
+
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                f"SELECT id, forename, surname, points FROM customers WHERE id={p()}",
+                (id_number,)
+            )
+
+            customer = cursor.fetchone()
+            conn.close()
+
+            if customer:
+                points = customer[3]
+                max_rewards = points // 150
+
+                for i in range(1, max_rewards + 1):
+                    redeem_options.append(i * 2)
+
+            else:
+                error = "Customer not found"
+
+        except:
+            error = "Invalid scan"
+
+    return render_template(
+        "scan.html",
+        customer=customer,
+        customer_id=customer_id,
+        error=error,
+        redeem_options=redeem_options
+    )
 
         try:
             id_number = parse_customer_id(customer_id)
