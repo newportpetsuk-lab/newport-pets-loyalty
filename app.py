@@ -126,6 +126,46 @@ Thank you for supporting Newport Pets!
     except Exception as e:
         print("EMAIL ERROR:", e)
 
+def send_points_email(to_email, forename, points_added, new_points):
+
+    msg = MIMEMultipart()
+    msg["Subject"] = "You've earned points at Newport Pets!"
+    msg["From"] = "newportpetsuk@gmail.com"
+    msg["To"] = to_email
+
+    # Reward calculation
+    rewards_available = (new_points // 150) * 2
+    remaining = 150 - (new_points % 150)
+
+    body = f"""
+Hi {forename},
+
+Thanks for shopping with Newport Pets!
+
+You earned: {points_added} points today
+Your new balance: {new_points} points
+
+"""
+
+    if rewards_available > 0:
+        body += f"You have £{rewards_available} in rewards waiting for you!\n\n"
+    else:
+        body += f"You're only £{remaining} away from your next £2 reward.\n\n"
+
+    body += "See you again soon!\n\nNewport Pets"
+
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+            server.send_message(msg)
+
+        print("POINTS EMAIL SENT")
+
+    except Exception as e:
+        print("POINTS EMAIL ERROR:", e)
+
 # -------------------------
 # DATABASE INITIALISATION
 # -------------------------
@@ -179,7 +219,7 @@ def init_db():
         )
         """)
 
-    # ✅ SAFE ADD COLUMN
+    #SAFE ADD COLUMN
     try:
         cursor.execute("ALTER TABLE customers ADD COLUMN customer_code TEXT")
     except:
@@ -341,9 +381,7 @@ def scan():
             return render_template("scan.html", error="Please scan or enter a customer ID")
 
         try:
-            # ✅ NEW: extract code from scanner input
             customer_id = extract_customer_code(raw_input)
-
             id_number = parse_customer_id(customer_id)
 
             conn = get_connection()
@@ -363,7 +401,6 @@ def scan():
 
                 for i in range(1, max_rewards + 1):
                     redeem_options.append(i * 2)
-
             else:
                 error = "Customer not found"
 
@@ -377,36 +414,80 @@ def scan():
         error=error,
         redeem_options=redeem_options
     )
+    # -------------------------
+# ADD POINTS
+# -------------------------
 
-        try:
-            id_number = parse_customer_id(customer_id)
+@app.route("/addpoints", methods=["POST"])
+def addpoints():
 
-            conn = get_connection()
-            cursor = conn.cursor()
+    if not session.get("logged_in"):
+        return redirect("/login")
 
-            cursor.execute(
-                f"SELECT id, forename, surname, points FROM customers WHERE id={p()}",
-                (id_number,)
-            )
+    customer_id = request.form["customer_id"].strip().upper()
 
-            customer = cursor.fetchone()
-            conn.close()
+    fish_amount = float(request.form.get("fish_amount", "0") or 0)
+    other_amount = float(request.form.get("other_amount", "0") or 0)
+    excluded_amount = float(request.form.get("excluded_amount", "0") or 0)
 
-            if customer:
-                points = customer[3]
-                max_rewards = points // 150
-                for i in range(1, max_rewards + 1):
-                    redeem_options.append(i * 2)
-            else:
-                error = "Customer not found"
+    # Points logic
+    points = int(fish_amount * 2 + other_amount)
+    total_amount = fish_amount + other_amount + excluded_amount
 
-        except:
-            error = "Invalid customer ID"
+    id_number = parse_customer_id(customer_id)
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Update points
+    cursor.execute(
+        f"UPDATE customers SET points = points + {p()} WHERE id={p()}",
+        (points, id_number)
+    )
+
+    # Insert transaction
+    cursor.execute(
+        f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
+        (id_number, points, total_amount, "Purchase")
+    )
+
+    # Get updated customer (INCLUDING EMAIL)
+    cursor.execute(
+        f"SELECT forename, surname, email, points FROM customers WHERE id={p()}",
+        (id_number,)
+    )
+
+    customer = cursor.fetchone()
+
+    conn.commit()
+    conn.close()
+
+    new_points = customer[3]
+    earned_today = points // 150 * 2
+    total_rewards = new_points // 150 * 2
+
+    formatted_id = "NP" + str(id_number).zfill(5)
+
+    # -------------------------
+    # SEND EMAIL AFTER PURCHASE
+    # -------------------------
+    try:
+        send_points_email(
+            customer[2],   # email
+            customer[0],   # forename
+            points,
+            new_points
+        )
+    except:
+        pass
 
     return render_template(
-        "scan.html",
-        customer=customer,
-        customer_id=customer_id,
-        error=error,
-        redeem_options=redeem_options
+        "points_added.html",
+        forename=customer[0],
+        surname=customer[1],
+        customer_id=formatted_id,
+        points_added=points,
+        new_points=new_points,
+        earned_today=earned_today,
+        total_rewards=total_rewards
     )
