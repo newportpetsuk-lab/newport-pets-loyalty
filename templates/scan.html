@@ -4,60 +4,67 @@
     <title>Scan Customer</title>
 
     <style>
-        body {
-            font-family: Arial;
-            text-align: center;
-            background: #f5f5f5;
-        }
+body {
+    font-family: Arial;
+    text-align: center;
+    background: #f5f5f5;
+}
 
-        .card {
-            background: white;
-            padding: 30px;
-            margin: 40px auto;
-            width: 400px;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        }
+.card {
+    background: white;
+    padding: 25px;
+    margin: 20px auto;
+    width: 420px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
 
-        input {
-            padding: 10px;
-            width: 80%;
-            margin: 10px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
+.scan-box {
+    border: 3px dashed #ff7a00;
+    padding: 20px;
+    margin: 15px 0;
+    border-radius: 10px;
+    background: #fff8f0;
+}
 
-        button {
-            padding: 10px 20px;
-            background: orange;
-            border: none;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 16px;
-            border-radius: 6px;
-        }
+input[type="text"] {
+    padding: 15px;
+    width: 90%;
+    font-size: 18px;
+    text-align: center;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+}
 
-        .fish {
-            background: #e3f2fd;
-        }
+button {
+    padding: 12px 20px;
+    background: #ff7a00;
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 16px;
+    border-radius: 8px;
+    margin: 5px;
+}
 
-        .other {
-            background: #fff3cd;
-        }
+button:hover {
+    opacity: 0.9;
+}
 
-        .excluded {
-            background: #f1f1f1;
-        }
+.customer-card {
+    border: 2px solid #4caf50;
+    background: #f1fff1;
+}
 
-        .field-label {
-            display: block;
-            width: 80%;
-            margin: 10px auto 0 auto;
-            text-align: left;
-            font-weight: bold;
-        }
-    </style>
+.field-label {
+    display: block;
+    width: 90%;
+    margin: 10px auto 5px auto;
+    text-align: left;
+    font-weight: bold;
+}
+</style>
 </head>
 
 <body>
@@ -85,15 +92,22 @@
         <button type="submit">Search</button>
     </form>
     
+    <!-- SCAN AREA -->
     <form method="POST" id="scanForm">
-    <input 
-    id="scanInput"
-    type="text" 
-    name="customer_id" 
-    placeholder="Scan QR code" 
-    autofocus
->
-</form>
+
+        <div class="scan-box">
+            <h3>📷 Ready to Scan</h3>
+
+            <input 
+                id="scanInput"
+                type="text" 
+                name="customer_id" 
+                placeholder="Scan customer QR"
+                autofocus
+            >
+        </div>
+
+    </form>
 
     {% if error %}
         <p style="color:red;">{{ error }}</p>
@@ -102,15 +116,24 @@
 </div>
 
 {% if customer %}
-<div class="card">
+<div class="card customer-card">
 
     <h3>{{ customer[1] }} {{ customer[2] }}</h3>
+
+    <!-- ✅ SCAN CONFIRMATION -->
+    <p style="color:#4caf50; font-weight:bold;">✔ Customer loaded</p>
+
     <p><strong>Points:</strong> {{ customer[3] }}</p>
 
-    <!-- 🔘 ACTION BUTTONS -->
+    <!-- ✅ UPSELL MESSAGE -->
+    <p style="color:#ff7a00; font-weight:bold;">
+        Spend £{{ 150 - (customer[3] % 150) }} more to earn £2 reward
+    </p>
+
+    <!-- ACTION BUTTONS -->
     <div style="margin-top:15px;">
 
-        <!-- 📜 View History -->
+        <!-- View History -->
         <a href="/history/{{ customer_id }}">
             <button type="button" style="background:#4caf50; margin:5px;">
                 View History
@@ -119,36 +142,36 @@
 
         {% if customer[3] >= 150 %}
 
-{% if redeem_options %}
+        {% if redeem_options %}
 
-    <h3>Redeem Rewards</h3>
+        <h3>Redeem Rewards</h3>
 
-    {% for amount in redeem_options %}
-    <form method="POST" action="/redeem" style="display:inline;">
-        <input type="hidden" name="customer_id" value="{{ customer_id }}">
-        <input type="hidden" name="redeem_amount" value="{{ amount }}">
+        {% for amount in redeem_options %}
+        <form method="POST" action="/redeem" style="display:inline;">
+            <input type="hidden" name="customer_id" value="{{ customer_id }}">
+            <input type="hidden" name="redeem_amount" value="{{ amount }}">
 
-        <button type="submit" style="background:#e53935; margin:5px;">
-            Redeem £{{ amount }}
+            <button type="submit" style="background:#e53935; margin:5px;">
+                Redeem £{{ amount }}
+            </button>
+        </form>
+        {% endfor %}
+
+        {% else %}
+        <button type="button" disabled style="background:grey; margin:5px;">
+            Need {{ 150 - customer[3] }} more points
         </button>
-    </form>
-    {% endfor %}
+        {% endif %}
 
-{% else %}
-    <button type="button" disabled style="background:grey; margin:5px;">
-        Need {{ 150 - customer[3] }} more points
-    </button>
-{% endif %}
-
-{% else %}
-    <button type="button" disabled style="background:grey; margin:5px; cursor:not-allowed;">
-        Need {{ 150 - customer[3] }} more points
-    </button>
-{% endif %}
+        {% else %}
+        <button type="button" disabled style="background:grey; margin:5px; cursor:not-allowed;">
+            Need {{ 150 - customer[3] }} more points
+        </button>
+        {% endif %}
 
     </div>
 
-    <!-- 💰 ADD POINTS -->
+    <!-- ADD POINTS -->
     <form method="POST" action="/addpoints">
 
         <input type="hidden" name="customer_id" value="{{ customer_id }}">
@@ -170,14 +193,22 @@
 
 </div>
 {% endif %}
+
+<!-- AUTO SUBMIT + BEEP -->
 <script>
 const input = document.getElementById("scanInput");
 
 input.addEventListener("input", function() {
     if (input.value.length > 5) {
+
+        // 🔊 optional beep
+        const audio = new Audio("https://www.soundjay.com/buttons/sounds/button-3.mp3");
+        audio.play();
+
         input.form.submit();
     }
 });
 </script>
+
 </body>
 </html>
