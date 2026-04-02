@@ -123,24 +123,24 @@ button:hover {
     <!-- ✅ SCAN CONFIRMATION -->
     <p style="color:#4caf50; font-weight:bold;">✔ Customer loaded</p>
 
-    <p><strong>Points:</strong> {{ customer[3] }}</p>
+    <!-- ✅ FIXED INDEX -->
+    <p><strong>Points:</strong> {{ customer[4] }}</p>
 
-    <!-- ✅ UPSELL MESSAGE -->
+    <!-- ✅ FIXED INDEX -->
     <p style="color:#ff7a00; font-weight:bold;">
-        Spend £{{ 150 - (customer[3] % 150) }} more to earn £2 reward
+        Spend £{{ 150 - (customer[4] % 150) }} more to earn £2 reward
     </p>
 
     <!-- ACTION BUTTONS -->
     <div style="margin-top:15px;">
 
-        <!-- View History -->
         <a href="/history/{{ customer_id }}">
             <button type="button" style="background:#4caf50; margin:5px;">
                 View History
             </button>
         </a>
 
-        {% if customer[3] >= 150 %}
+        {% if customer[4] >= 150 %}
 
         {% if redeem_options %}
 
@@ -159,13 +159,13 @@ button:hover {
 
         {% else %}
         <button type="button" disabled style="background:grey; margin:5px;">
-            Need {{ 150 - customer[3] }} more points
+            Need {{ 150 - customer[4] }} more points
         </button>
         {% endif %}
 
         {% else %}
         <button type="button" disabled style="background:grey; margin:5px; cursor:not-allowed;">
-            Need {{ 150 - customer[3] }} more points
+            Need {{ 150 - customer[4] }} more points
         </button>
         {% endif %}
 
@@ -201,7 +201,6 @@ const input = document.getElementById("scanInput");
 input.addEventListener("input", function() {
     if (input.value.length > 5) {
 
-        // 🔊 optional beep
         const audio = new Audio("https://www.soundjay.com/buttons/sounds/button-3.mp3");
         audio.play();
 
