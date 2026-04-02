@@ -388,7 +388,7 @@ def scan():
             cursor = conn.cursor()
 
             cursor.execute(
-                f"SELECT id, forename, surname, points FROM customers WHERE id={p()}",
+                f"SELECT id, forename, surname, email, points FROM customers WHERE id={p()}",
                 (id_number,)
             )
 
