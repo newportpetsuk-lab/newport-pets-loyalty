@@ -677,7 +677,6 @@ def dashboard():
 @app.route("/send-reminders")
 def send_reminders():
 
-    # 🔐 Simple protection (prevents public abuse)
     key = request.args.get("key")
     if key != "newport-secret-123":
         return "Unauthorized", 403
@@ -685,29 +684,33 @@ def send_reminders():
     conn = get_connection()
     cursor = conn.cursor()
 
-    if is_postgres():
-        cursor.execute("""
-            SELECT forename, email, points
-            FROM customers
-            WHERE points > 0
-            AND email IS NOT NULL
-            AND email != ''
-            AND last_visit IS NOT NULL
-            AND last_visit < CURRENT_TIMESTAMP - INTERVAL '30 days'
-        """)
-    else:
-        cursor.execute("""
-            SELECT forename, email, points
-            FROM customers
-            WHERE points > 0
-            AND email IS NOT NULL
-            AND email != ''
-            AND last_visit IS NOT NULL
-            AND last_visit < datetime('now', '-30 days')
-        """)
+    try:
+        if is_postgres():
+            cursor.execute("""
+                SELECT forename, email, points
+                FROM customers
+                WHERE points > 0
+                AND email IS NOT NULL
+                AND email != ''
+                AND last_visit IS NOT NULL
+                AND last_visit < CURRENT_TIMESTAMP - INTERVAL '30 days'
+            """)
+        else:
+            cursor.execute("""
+                SELECT forename, email, points
+                FROM customers
+                WHERE points > 0
+                AND email IS NOT NULL
+                AND email != ''
+                AND last_visit IS NOT NULL
+                AND last_visit < datetime('now', '-30 days')
+            """)
 
-    customers = cursor.fetchall()
-    conn.close()
+        customers = cursor.fetchall()
+        conn.close()
+
+    except Exception as e:
+        return f"Database error: {e}"
 
     count = 0
 
@@ -715,8 +718,8 @@ def send_reminders():
         try:
             send_reminder_email(c[1], c[0], c[2])
             count += 1
-        except:
-            pass
+        except Exception as e:
+            print("EMAIL ERROR:", e)
 
     return f"Sent {count} reminder emails"
 
