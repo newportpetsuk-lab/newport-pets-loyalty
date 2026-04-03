@@ -1,4 +1,4 @@
-# version 1.1 (QR + Customer Page Upgrade SAFE)
+# version 1.2 (QR + Customer Page + Points Emails + Reminder Emails)
 
 from flask import Flask, render_template, request, session, redirect, url_for, send_file
 import sqlite3
@@ -73,8 +73,8 @@ def parse_customer_id(customer_id):
         return int(customer_id[2:])
     return int(customer_id)
 
-def extract_customer_code(raw_input):
 
+def extract_customer_code(raw_input):
     raw_input = raw_input.strip()
 
     # If full URL scanned
@@ -85,11 +85,10 @@ def extract_customer_code(raw_input):
     return raw_input.upper()
 
 # -------------------------
-# EMAIL FUNCTION
+# EMAIL FUNCTIONS
 # -------------------------
 
 def send_email(to_email, forename, customer_id):
-
     msg = MIMEMultipart()
     msg["Subject"] = "Welcome to Newport Pets Rewards"
     msg["From"] = "newportpetsuk@gmail.com"
@@ -126,16 +125,16 @@ Thank you for supporting Newport Pets!
     except Exception as e:
         print("EMAIL ERROR:", e)
 
-def send_points_email(to_email, forename, points_added, new_points):
 
+def send_points_email(to_email, forename, points_added, new_points):
     msg = MIMEMultipart()
-    msg["Subject"] = "You've earned points at Newport Pets!"
+    msg["Subject"] = f"You earned {points_added} points at Newport Pets!"
     msg["From"] = "newportpetsuk@gmail.com"
     msg["To"] = to_email
 
-    # Reward calculation
     rewards_available = (new_points // 150) * 2
-    remaining = 150 - (new_points % 150)
+    remainder = new_points % 150
+    remaining = 150 - remainder if remainder != 0 else 0
 
     body = f"""
 Hi {forename},
@@ -149,7 +148,7 @@ Your new balance: {new_points} points
 
     if rewards_available > 0:
         body += f"You have £{rewards_available} in rewards waiting for you!\n\n"
-    else:
+    elif remaining > 0:
         body += f"You're only £{remaining} away from your next £2 reward.\n\n"
 
     body += "See you again soon!\n\nNewport Pets"
@@ -165,6 +164,40 @@ Your new balance: {new_points} points
 
     except Exception as e:
         print("POINTS EMAIL ERROR:", e)
+
+
+def send_reminder_email(to_email, forename, points):
+    rewards = (points // 150) * 2
+
+    msg = MIMEMultipart()
+    msg["Subject"] = "You’ve got rewards waiting at Newport Pets!"
+    msg["From"] = "newportpetsuk@gmail.com"
+    msg["To"] = to_email
+
+    body = f"""
+Hi {forename},
+
+We haven’t seen you in a while!
+
+You currently have {points} points with us.
+"""
+
+    if rewards > 0:
+        body += f"\nYou’ve got £{rewards} in rewards waiting to be used!"
+
+    body += "\n\nCome back soon and make the most of your rewards.\n\nNewport Pets"
+
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+            server.send_message(msg)
+
+        print("REMINDER EMAIL SENT")
+
+    except Exception as e:
+        print("REMINDER EMAIL ERROR:", e)
 
 # -------------------------
 # DATABASE INITIALISATION
@@ -219,9 +252,13 @@ def init_db():
         )
         """)
 
-    #SAFE ADD COLUMN
     try:
         cursor.execute("ALTER TABLE customers ADD COLUMN customer_code TEXT")
+    except:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE customers ADD COLUMN last_visit TIMESTAMP")
     except:
         pass
 
@@ -245,9 +282,7 @@ def home():
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
-
     if request.method == "POST":
-
         forename = request.form["forename"]
         surname = request.form["surname"]
         phone = request.form["phone"]
@@ -269,13 +304,11 @@ def signup():
             """, (forename, surname, phone, email))
 
         customer_id = get_insert_id(cursor)
-
         conn.commit()
         conn.close()
 
         formatted_id = "NP" + str(customer_id).zfill(5)
 
-        # SAVE CUSTOMER CODE
         conn = get_connection()
         cursor = conn.cursor()
 
@@ -286,16 +319,15 @@ def signup():
         conn.commit()
         conn.close()
 
-        # QR 1 (SCANNER)
+        # QR 1 (scanner QR)
         qr_basic = qrcode.make(formatted_id)
         qr_basic.save(os.path.join(QR_DIR, f"qr_{formatted_id}.png"))
 
-        # QR 2 (CUSTOMER PAGE)
+        # QR 2 (customer page QR)
         url = f"https://newport-loyalty-final.onrender.com/customer/{formatted_id}"
         qr_url = qrcode.make(url)
         qr_url.save(os.path.join(QR_DIR, f"qr_url_{formatted_id}.png"))
 
-        # SEND EMAIL
         send_email(email, forename, formatted_id)
 
         return render_template(
@@ -312,7 +344,6 @@ def signup():
 
 @app.route("/customer/<code>")
 def customer_page(code):
-
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -359,12 +390,11 @@ def logout():
     return redirect("/login")
 
 # -------------------------
-# SCAN (UNCHANGED)
+# SCAN
 # -------------------------
 
 @app.route("/scan", methods=["GET", "POST"])
 def scan():
-
     if not session.get("logged_in"):
         return redirect("/login")
 
@@ -374,7 +404,6 @@ def scan():
     redeem_options = []
 
     if request.method == "POST":
-
         raw_input = request.form.get("customer_id", "").strip()
 
         if raw_input == "":
@@ -396,7 +425,7 @@ def scan():
             conn.close()
 
             if customer:
-                points = customer[3]
+                points = customer[4]
                 max_rewards = points // 150
 
                 for i in range(1, max_rewards + 1):
@@ -414,13 +443,13 @@ def scan():
         error=error,
         redeem_options=redeem_options
     )
-    # -------------------------
+
+# -------------------------
 # ADD POINTS
 # -------------------------
 
 @app.route("/addpoints", methods=["POST"])
 def addpoints():
-
     if not session.get("logged_in"):
         return redirect("/login")
 
@@ -430,7 +459,6 @@ def addpoints():
     other_amount = float(request.form.get("other_amount", "0") or 0)
     excluded_amount = float(request.form.get("excluded_amount", "0") or 0)
 
-    # Points logic
     points = int(fish_amount * 2 + other_amount)
     total_amount = fish_amount + other_amount + excluded_amount
 
@@ -439,19 +467,16 @@ def addpoints():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Update points
     cursor.execute(
-        f"UPDATE customers SET points = points + {p()} WHERE id={p()}",
+        f"UPDATE customers SET points = points + {p()}, last_visit = CURRENT_TIMESTAMP WHERE id={p()}",
         (points, id_number)
     )
 
-    # Insert transaction
     cursor.execute(
         f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
         (id_number, points, total_amount, "Purchase")
     )
 
-    # Get updated customer (INCLUDING EMAIL)
     cursor.execute(
         f"SELECT forename, surname, email, points FROM customers WHERE id={p()}",
         (id_number,)
@@ -465,19 +490,16 @@ def addpoints():
     new_points = customer[3]
     earned_today = points // 150 * 2
     total_rewards = new_points // 150 * 2
-
     formatted_id = "NP" + str(id_number).zfill(5)
 
-    # -------------------------
-    # SEND EMAIL AFTER PURCHASE
-    # -------------------------
     try:
-        send_points_email(
-            customer[2],   # email
-            customer[0],   # forename
-            points,
-            new_points
-        )
+        if customer[2]:
+            send_points_email(
+                customer[2],   # email
+                customer[0],   # forename
+                points,
+                new_points
+            )
     except:
         pass
 
@@ -491,3 +513,210 @@ def addpoints():
         earned_today=earned_today,
         total_rewards=total_rewards
     )
+
+# -------------------------
+# HISTORY
+# -------------------------
+
+@app.route("/history/<customer_id>")
+def history(customer_id):
+    try:
+        numeric_id = int(customer_id.replace("NP", ""))
+    except:
+        return "Invalid customer ID"
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            f"SELECT points, amount, reason, timestamp FROM transactions WHERE customer_id={p()} ORDER BY timestamp DESC",
+            (numeric_id,)
+        )
+
+        transactions = cursor.fetchall()
+        conn.close()
+
+    except Exception as e:
+        return f"Database error: {e}"
+
+    return render_template(
+        "history.html",
+        transactions=transactions,
+        customer_id=customer_id
+    )
+
+# -------------------------
+# LOOKUP
+# -------------------------
+
+@app.route("/lookup", methods=["GET", "POST"])
+def lookup():
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    results = []
+    error = None
+
+    if request.method == "POST":
+        query = request.form.get("query", "").strip()
+
+        if query == "":
+            error = "Enter name or phone"
+        else:
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            if is_postgres():
+                cursor.execute(
+                    f"""
+                    SELECT id, forename, surname, phone, points
+                    FROM customers
+                    WHERE phone ILIKE {p()} OR forename ILIKE {p()} OR surname ILIKE {p()}
+                    LIMIT 10
+                    """,
+                    (f"%{query}%", f"%{query}%", f"%{query}%")
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT id, forename, surname, phone, points
+                    FROM customers
+                    WHERE phone LIKE ? OR forename LIKE ? OR surname LIKE ?
+                    LIMIT 10
+                    """,
+                    (f"%{query}%", f"%{query}%", f"%{query}%")
+                )
+
+            results = cursor.fetchall()
+            conn.close()
+
+            if not results:
+                error = "No customers found"
+
+    return render_template("lookup.html", results=results, error=error)
+
+# -------------------------
+# REDEEM
+# -------------------------
+
+@app.route("/redeem", methods=["POST"])
+def redeem():
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    customer_id = request.form["customer_id"]
+    id_number = int(customer_id[2:])
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        f"SELECT points FROM customers WHERE id={p()}",
+        (id_number,)
+    )
+    current_points = cursor.fetchone()[0]
+
+    redeem_amount = int(request.form.get("redeem_amount", 2))
+    points_needed = (redeem_amount // 2) * 150
+
+    if current_points >= points_needed:
+        cursor.execute(
+            f"UPDATE customers SET points = points - {p()} WHERE id={p()}",
+            (points_needed, id_number)
+        )
+
+        cursor.execute(
+            f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
+            (id_number, -points_needed, -redeem_amount, "Reward redeemed")
+        )
+
+        conn.commit()
+        message = f"Apply £{redeem_amount} discount on till"
+    else:
+        message = "Not enough points"
+
+    conn.close()
+
+    return render_template("redeem.html", message=message)
+
+# -------------------------
+# DASHBOARD
+# -------------------------
+
+@app.route("/dashboard")
+def dashboard():
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM customers")
+    total_customers = cursor.fetchone()[0]
+
+    cursor.execute("SELECT SUM(points) FROM transactions WHERE points > 0")
+    total_points = cursor.fetchone()[0] or 0
+
+    cursor.execute("SELECT SUM(amount) FROM transactions WHERE amount < 0")
+    total_rewards = abs(cursor.fetchone()[0] or 0)
+
+    conn.close()
+
+    return render_template(
+        "dashboard.html",
+        total_customers=total_customers,
+        total_points=total_points,
+        total_rewards=total_rewards
+    )
+
+# -------------------------
+# SEND REMINDER EMAILS
+# -------------------------
+
+@app.route("/send-reminders")
+def send_reminders():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    if is_postgres():
+        cursor.execute("""
+            SELECT forename, email, points
+            FROM customers
+            WHERE points > 0
+            AND email IS NOT NULL
+            AND email != ''
+            AND last_visit IS NOT NULL
+            AND last_visit < CURRENT_TIMESTAMP - INTERVAL '30 days'
+        """)
+    else:
+        cursor.execute("""
+            SELECT forename, email, points
+            FROM customers
+            WHERE points > 0
+            AND email IS NOT NULL
+            AND email != ''
+            AND last_visit IS NOT NULL
+            AND last_visit < datetime('now', '-30 days')
+        """)
+
+    customers = cursor.fetchall()
+    conn.close()
+
+    count = 0
+
+    for customer in customers:
+        try:
+            send_reminder_email(customer[1], customer[0], customer[2])
+            count += 1
+        except:
+            pass
+
+    return f"Sent {count} reminder emails"
+
+# -------------------------
+# RUN
+# -------------------------
+
+if __name__ == "__main__":
+    app.run(debug=True)
