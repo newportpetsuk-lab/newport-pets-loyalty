@@ -695,6 +695,40 @@ def fix_db():
     finally:
         conn.close()
 
+
+# -------------------------
+# TEST REMINDER (TEMP)
+# -------------------------
+
+@app.route("/test-reminder")
+def test_reminder():
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("""
+                UPDATE customers
+                SET last_visit = CURRENT_TIMESTAMP - INTERVAL '40 days'
+                WHERE id = 1
+            """)
+        else:
+            cursor.execute("""
+                UPDATE customers
+                SET last_visit = datetime('now', '-40 days')
+                WHERE id = 1
+            """)
+
+        conn.commit()
+        return "Test customer updated"
+
+    except Exception as e:
+        return f"Error: {e}"
+
+    finally:
+        conn.close()
+
 # -------------------------
 # SEND REMINDER EMAILS
 # -------------------------
