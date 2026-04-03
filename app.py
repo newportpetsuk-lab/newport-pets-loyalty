@@ -10,6 +10,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
+from datetime import datetime
 
 # -------------------------
 # PATH SETUP
@@ -40,6 +41,24 @@ SQLITE_PATH = os.path.join(BASE_DIR, "customers.db")
 STAFF_USERNAME = os.getenv("STAFF_USERNAME", "admin")
 STAFF_PASSWORD = os.getenv("STAFF_PASSWORD", "newport1003!")
 
+# -------------------------
+# CAMPAIGN SETTINGS
+# -------------------------
+
+CAMPAIGN_ACTIVE = False
+
+CAMPAIGN_TYPE = "double_points_fish"
+
+CAMPAIGN_MESSAGE = """
+🐠 DOUBLE POINTS ON LIVE FISH THIS WEEKEND!
+
+Earn double loyalty points on all live fish purchases.
+
+Offer valid in-store only.
+
+See you soon!
+Newport Pets
+"""
 # -------------------------
 # DATABASE HELPERS
 # -------------------------
@@ -259,6 +278,11 @@ def init_db():
 
     try:
         cursor.execute("ALTER TABLE customers ADD COLUMN last_visit TIMESTAMP")
+    except:
+        pass
+        # Add last_reminder column safely
+    try:
+        cursor.execute("ALTER TABLE customers ADD COLUMN last_reminder TIMESTAMP")
     except:
         pass
 
@@ -695,40 +719,6 @@ def fix_db():
     finally:
         conn.close()
 
-
-# -------------------------
-# TEST REMINDER (TEMP)
-# -------------------------
-
-@app.route("/test-reminder")
-def test_reminder():
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    try:
-        if is_postgres():
-            cursor.execute("""
-                UPDATE customers
-                SET last_visit = CURRENT_TIMESTAMP - INTERVAL '40 days'
-                WHERE id = 1
-            """)
-        else:
-            cursor.execute("""
-                UPDATE customers
-                SET last_visit = datetime('now', '-40 days')
-                WHERE id = 1
-            """)
-
-        conn.commit()
-        return "Test customer updated"
-
-    except Exception as e:
-        return f"Error: {e}"
-
-    finally:
-        conn.close()
-
 # -------------------------
 # SEND REMINDER EMAILS
 # -------------------------
@@ -743,44 +733,124 @@ def send_reminders():
     conn = get_connection()
     cursor = conn.cursor()
 
-    try:
-        if is_postgres():
-            cursor.execute("""
-                SELECT forename, email, points
-                FROM customers
-                WHERE points > 0
-                AND email IS NOT NULL
-                AND email != ''
-                AND last_visit IS NOT NULL
-                AND last_visit < CURRENT_TIMESTAMP - INTERVAL '30 days'
-            """)
-        else:
-            cursor.execute("""
-                SELECT forename, email, points
-                FROM customers
-                WHERE points > 0
-                AND email IS NOT NULL
-                AND email != ''
-                AND last_visit IS NOT NULL
-                AND last_visit < datetime('now', '-30 days')
-            """)
+    # -------------------------
+    # SELECT ELIGIBLE CUSTOMERS
+    # -------------------------
 
-        customers = cursor.fetchall()
-        conn.close()
+    if is_postgres():
+        cursor.execute("""
+            SELECT id, forename, email, points, last_visit, last_reminder
+            FROM customers
+            WHERE email IS NOT NULL
+            AND email != ''
+            AND last_visit IS NOT NULL
+            AND last_visit < CURRENT_TIMESTAMP - INTERVAL '30 days'
+            AND (
+                last_reminder IS NULL OR
+                last_reminder < CURRENT_TIMESTAMP - INTERVAL '21 days'
+            )
+        """)
+    else:
+        cursor.execute("""
+            SELECT id, forename, email, points, last_visit, last_reminder
+            FROM customers
+            WHERE email IS NOT NULL
+            AND email != ''
+            AND last_visit IS NOT NULL
+            AND last_visit < datetime('now', '-30 days')
+            AND (
+                last_reminder IS NULL OR
+                last_reminder < datetime('now', '-21 days')
+            )
+        """)
+
+    customers = cursor.fetchall()
+
+sent = 0
+
+for c in customers:
+
+    customer_id, name, email, points, last_visit, last_reminder = c
+
+    today = datetime.utcnow().weekday()
+    # Monday = 0 ... Sunday = 6
+
+    # -------------------------
+    # CAMPAIGN MODE (THU + FRI ONLY)
+    # -------------------------
+    if CAMPAIGN_ACTIVE and today in [3, 4]:
+
+        subject = "🐠 Double Points on Live Fish!"
+
+        message = f"""
+Hi {name},
+
+🐠 DOUBLE POINTS ON LIVE FISH — THIS WEEKEND!
+
+Earn double loyalty points on all live fish purchases.
+
+Perfect time to stock up your aquarium.
+
+See you soon,
+Newport Pets
+"""
+
+    else:
+        # -------------------------
+        # NORMAL REMINDER LOGIC
+        # -------------------------
+
+        rewards = (points // 150) * 2
+
+        if points >= 300:
+            subject = f"£{rewards} waiting for you!"
+            message = f"Hi {name}, you have £{rewards} in rewards waiting..."
+
+        elif points >= 150:
+            subject = "You have rewards waiting!"
+            message = f"Hi {name}, you’ve earned £{rewards}..."
+
+        else:
+            remaining = 150 - (points % 150)
+            subject = "You're close to your next reward"
+            message = f"Hi {name}, you're £{remaining} away..."
+
+    # -------------------------
+    # SEND EMAIL
+    # -------------------------
+    try:
+        msg = MIMEMultipart()
+        msg["Subject"] = subject
+        msg["From"] = "newportpetsuk@gmail.com"
+        msg["To"] = email
+
+        msg.attach(MIMEText(message, "plain"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+            server.send_message(msg)
+
+        # update last reminder
+        if is_postgres():
+            cursor.execute(
+                "UPDATE customers SET last_reminder = CURRENT_TIMESTAMP WHERE id = %s",
+                (customer_id,)
+            )
+        else:
+            cursor.execute(
+                "UPDATE customers SET last_reminder = datetime('now') WHERE id = ?",
+                (customer_id,)
+            )
+
+        sent += 1
 
     except Exception as e:
-        return f"Database error: {e}"
+        print("Email error:", e)
 
-    count = 0
+    conn.commit()
+    conn.close()
 
-    for c in customers:
-        try:
-            send_reminder_email(c[1], c[0], c[2])
-            count += 1
-        except Exception as e:
-            print("EMAIL ERROR:", e)
-
-    return f"Sent {count} reminder emails"
+    return f"Sent {sent} reminder emails"
 
 # -------------------------
 # RUN
