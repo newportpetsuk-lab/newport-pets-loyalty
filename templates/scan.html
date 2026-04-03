@@ -84,6 +84,7 @@ button:hover {
     </a>
 
     <h2>Scan Customer</h2>
+    <p style="color:#777;">Scan QR or search manually</p>
 
     <h3>Find Customer</h3>
 
@@ -120,52 +121,55 @@ button:hover {
 
     <h3>{{ customer[1] }} {{ customer[2] }}</h3>
 
-    <!-- ✅ SCAN CONFIRMATION -->
     <p style="color:#4caf50; font-weight:bold;">✔ Customer loaded</p>
 
-    <!-- ✅ FIXED INDEX -->
     <p><strong>Points:</strong> {{ customer[4] }}</p>
 
-    <!-- ✅ FIXED INDEX -->
+    <!-- ✅ CORRECT REWARD LOGIC -->
+    {% set remainder = customer[4] % 150 %}
+    {% set remaining = 150 - remainder if remainder != 0 else 0 %}
+
+    {% if remaining > 0 %}
     <p style="color:#ff7a00; font-weight:bold;">
-        Spend £{{ 150 - (customer[4] % 150) }} more to earn £2 reward
+        Spend £{{ remaining }} more to earn £2 reward
     </p>
+    {% endif %}
 
     <!-- ACTION BUTTONS -->
     <div style="margin-top:15px;">
 
         <a href="/history/{{ customer_id }}">
-            <button type="button" style="background:#4caf50; margin:5px;">
+            <button type="button" style="background:#4caf50;">
                 View History
             </button>
         </a>
 
         {% if customer[4] >= 150 %}
 
-        {% if redeem_options %}
+            {% if redeem_options %}
 
-        <h3>Redeem Rewards</h3>
+            <h3>Redeem Rewards</h3>
 
-        {% for amount in redeem_options %}
-        <form method="POST" action="/redeem" style="display:inline;">
-            <input type="hidden" name="customer_id" value="{{ customer_id }}">
-            <input type="hidden" name="redeem_amount" value="{{ amount }}">
+            {% for amount in redeem_options %}
+            <form method="POST" action="/redeem" style="display:inline;">
+                <input type="hidden" name="customer_id" value="{{ customer_id }}">
+                <input type="hidden" name="redeem_amount" value="{{ amount }}">
 
-            <button type="submit" style="background:#e53935; margin:5px;">
-                Redeem £{{ amount }}
+                <button type="submit" style="background:#e53935;">
+                    Redeem £{{ amount }}
+                </button>
+            </form>
+            {% endfor %}
+
+            {% else %}
+            <button type="button" disabled style="background:grey;">
+                Need {{ remaining }} more points
             </button>
-        </form>
-        {% endfor %}
+            {% endif %}
 
         {% else %}
-        <button type="button" disabled style="background:grey; margin:5px;">
-            Need {{ 150 - customer[4] }} more points
-        </button>
-        {% endif %}
-
-        {% else %}
-        <button type="button" disabled style="background:grey; margin:5px; cursor:not-allowed;">
-            Need {{ 150 - customer[4] }} more points
+        <button type="button" disabled style="background:grey;">
+            Need {{ remaining }} more points
         </button>
         {% endif %}
 
@@ -177,13 +181,13 @@ button:hover {
         <input type="hidden" name="customer_id" value="{{ customer_id }}">
 
         <label class="field-label">Fish £ (double points)</label>
-        <input type="number" step="0.01" min="0" name="fish_amount" class="fish" value="0">
+        <input type="number" step="0.01" min="0" name="fish_amount" value="0">
 
         <label class="field-label">Other eligible £</label>
-        <input type="number" step="0.01" min="0" name="other_amount" class="other" value="0">
+        <input type="number" step="0.01" min="0" name="other_amount" value="0">
 
         <label class="field-label">Excluded £</label>
-        <input type="number" step="0.01" min="0" name="excluded_amount" class="excluded" value="0">
+        <input type="number" step="0.01" min="0" name="excluded_amount" value="0">
 
         <br>
 
@@ -194,12 +198,14 @@ button:hover {
 </div>
 {% endif %}
 
-<!-- AUTO SUBMIT + BEEP -->
+<!-- AUTO SUBMIT + SAFE BEEP -->
 <script>
 const input = document.getElementById("scanInput");
+let scanned = false;
 
 input.addEventListener("input", function() {
-    if (input.value.length > 5) {
+    if (input.value.length > 5 && !scanned) {
+        scanned = true;
 
         const audio = new Audio("https://www.soundjay.com/buttons/sounds/button-3.mp3");
         audio.play();
