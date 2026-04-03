@@ -644,6 +644,10 @@ def redeem():
 # DASHBOARD
 # -------------------------
 
+# -------------------------
+# DASHBOARD
+# -------------------------
+
 @app.route("/dashboard")
 def dashboard():
     if not session.get("logged_in"):
@@ -669,6 +673,27 @@ def dashboard():
         total_points=total_points,
         total_rewards=total_rewards
     )
+
+
+# -------------------------
+# FIX DATABASE (TEMP)
+# -------------------------
+
+@app.route("/fix-db")
+def fix_db():
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("ALTER TABLE customers ADD COLUMN last_visit TIMESTAMP")
+        conn.commit()
+        return "last_visit column added"
+    except Exception as e:
+        return f"Already exists or error: {e}"
+
+    finally:
+        conn.close()
 
 # -------------------------
 # SEND REMINDER EMAILS
