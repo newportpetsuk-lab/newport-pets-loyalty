@@ -676,6 +676,12 @@ def dashboard():
 
 @app.route("/send-reminders")
 def send_reminders():
+
+    # 🔐 Simple protection (prevents public abuse)
+    key = request.args.get("key")
+    if key != "newport-secret-123":
+        return "Unauthorized", 403
+
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -705,9 +711,9 @@ def send_reminders():
 
     count = 0
 
-    for customer in customers:
+    for c in customers:
         try:
-            send_reminder_email(customer[1], customer[0], customer[2])
+            send_reminder_email(c[1], c[0], c[2])
             count += 1
         except:
             pass
