@@ -734,113 +734,136 @@ def send_reminders():
     cursor = conn.cursor()
 
     # -------------------------
-    # SELECT ELIGIBLE CUSTOMERS
+    # SELECT CUSTOMERS
     # -------------------------
-
     if CAMPAIGN_ACTIVE:
 
-    # CAMPAIGN MODE → SEND TO ALL CUSTOMERS (IGNORE 21-DAY RULE)
-    if is_postgres():
-        cursor.execute("""
-            SELECT id, forename, email, points, last_visit, last_reminder
-            FROM customers
-            WHERE email IS NOT NULL
-            AND email != ''
-        """)
-    else:
-        cursor.execute("""
-            SELECT id, forename, email, points, last_visit, last_reminder
-            FROM customers
-            WHERE email IS NOT NULL
-            AND email != ''
-        """)
-
-else:
-
-    # NORMAL MODE → EVERY 21 DAYS
-    if is_postgres():
-        cursor.execute("""
-            SELECT id, forename, email, points, last_visit, last_reminder
-            FROM customers
-            WHERE email IS NOT NULL
-            AND email != ''
-            AND points > 0
-            AND (
-                last_reminder IS NULL OR
-                last_reminder < CURRENT_TIMESTAMP - INTERVAL '21 days'
-            )
-        """)
-    else:
-        cursor.execute("""
-            SELECT id, forename, email, points, last_visit, last_reminder
-            FROM customers
-            WHERE email IS NOT NULL
-            AND email != ''
-            AND points > 0
-            AND (
-                last_reminder IS NULL OR
-                last_reminder < datetime('now', '-21 days')
-            )
-        """)
-        # -------------------------
-        # NORMAL REMINDER LOGIC
-        # -------------------------
-
-        rewards = (points // 150) * 2
-
-        if points >= 300:
-            subject = f"£{rewards} waiting for you!"
-            message = f"Hi {name}, you have £{rewards} in rewards waiting..."
-
-        elif points >= 150:
-            subject = "You have rewards waiting!"
-            message = f"Hi {name}, you’ve earned £{rewards}..."
-
+        if is_postgres():
+            cursor.execute("""
+                SELECT id, forename, email, points, last_visit, last_reminder
+                FROM customers
+                WHERE email IS NOT NULL AND email != ''
+            """)
         else:
-            remaining = 150 - (points % 150)
-            subject = "You're close to your next reward"
-            message = f"Hi {name}, you're £{remaining} away..."
+            cursor.execute("""
+                SELECT id, forename, email, points, last_visit, last_reminder
+                FROM customers
+                WHERE email IS NOT NULL AND email != ''
+            """)
 
-    # -------------------------
-    # SEND EMAIL
-    # -------------------------
-    try:
-    msg = MIMEMultipart()
-    msg["Subject"] = subject
-    msg["From"] = "newportpetsuk@gmail.com"
-    msg["To"] = email
-
-    msg.attach(MIMEText(message, "plain"))
-
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
-        server.send_message(msg)
-
-    # -------------------------
-    # UPDATE LAST REMINDER (ONLY NORMAL REMINDERS)
-    # -------------------------
-    if not CAMPAIGN_ACTIVE:
+    else:
 
         if is_postgres():
-            cursor.execute(
-                "UPDATE customers SET last_reminder = CURRENT_TIMESTAMP WHERE id = %s",
-                (customer_id,)
-            )
+            cursor.execute("""
+                SELECT id, forename, email, points, last_visit, last_reminder
+                FROM customers
+                WHERE email IS NOT NULL
+                AND email != ''
+                AND points > 0
+                AND (
+                    last_reminder IS NULL OR
+                    last_reminder < CURRENT_TIMESTAMP - INTERVAL '21 days'
+                )
+            """)
         else:
-            cursor.execute(
-                "UPDATE customers SET last_reminder = datetime('now') WHERE id = ?",
-                (customer_id,)
-            )
+            cursor.execute("""
+                SELECT id, forename, email, points, last_visit, last_reminder
+                FROM customers
+                WHERE email IS NOT NULL
+                AND email != ''
+                AND points > 0
+                AND (
+                    last_reminder IS NULL OR
+                    last_reminder < datetime('now', '-21 days')
+                )
+            """)
 
-    sent += 1
+    customers = cursor.fetchall()
 
-except Exception as e:
-    print("Email error:", e)
+    sent = 0
+
+    # -------------------------
+    # LOOP CUSTOMERS
+    # -------------------------
+    for c in customers:
+
+        customer_id, name, email, points, last_visit, last_reminder = c
+
+        # -------------------------
+        # CAMPAIGN OR REMINDER
+        # -------------------------
+        if CAMPAIGN_ACTIVE:
+
+            subject = "🐠 Double Points on Live Fish!"
+
+            message = f"""
+Hi {name},
+
+🐠 DOUBLE POINTS ON LIVE FISH THIS WEEKEND!
+
+Earn double loyalty points on all live fish purchases.
+
+Perfect time to stock up your aquarium.
+
+See you soon,
+Newport Pets
+"""
+
+        else:
+
+            rewards = (points // 150) * 2
+
+            if points >= 300:
+                subject = f"£{rewards} waiting for you!"
+                message = f"Hi {name}, you have £{rewards} in rewards waiting for you."
+
+            elif points >= 150:
+                subject = "You have rewards waiting!"
+                message = f"Hi {name}, you’ve earned £{rewards} in rewards."
+
+            else:
+                remaining = 150 - (points % 150)
+                subject = "You're close to your next reward"
+                message = f"Hi {name}, you're £{remaining} away from your next £2 reward."
+
+        # -------------------------
+        # SEND EMAIL
+        # -------------------------
+        try:
+            msg = MIMEMultipart()
+            msg["Subject"] = subject
+            msg["From"] = "newportpetsuk@gmail.com"
+            msg["To"] = email
+
+            msg.attach(MIMEText(message, "plain"))
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+                server.send_message(msg)
+
+            # ONLY update reminder if NOT campaign
+            if not CAMPAIGN_ACTIVE:
+
+                if is_postgres():
+                    cursor.execute(
+                        "UPDATE customers SET last_reminder = CURRENT_TIMESTAMP WHERE id = %s",
+                        (customer_id,)
+                    )
+                else:
+                    cursor.execute(
+                        "UPDATE customers SET last_reminder = datetime('now') WHERE id = ?",
+                        (customer_id,)
+                    )
+
+            sent += 1
+
+        except Exception as e:
+            print("Email error:", e)
 
     conn.commit()
     conn.close()
 
-    return f"Sent {sent} reminder emails"
+    return f"Sent {sent} emails"
 
 # -------------------------
 # RUN
