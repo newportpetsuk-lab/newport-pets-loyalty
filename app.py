@@ -737,14 +737,34 @@ def send_reminders():
     # SELECT ELIGIBLE CUSTOMERS
     # -------------------------
 
+    if CAMPAIGN_ACTIVE:
+
+    # CAMPAIGN MODE → SEND TO ALL CUSTOMERS (IGNORE 21-DAY RULE)
     if is_postgres():
         cursor.execute("""
             SELECT id, forename, email, points, last_visit, last_reminder
             FROM customers
             WHERE email IS NOT NULL
             AND email != ''
-            AND last_visit IS NOT NULL
-            AND last_visit < CURRENT_TIMESTAMP - INTERVAL '30 days'
+        """)
+    else:
+        cursor.execute("""
+            SELECT id, forename, email, points, last_visit, last_reminder
+            FROM customers
+            WHERE email IS NOT NULL
+            AND email != ''
+        """)
+
+else:
+
+    # NORMAL MODE → EVERY 21 DAYS
+    if is_postgres():
+        cursor.execute("""
+            SELECT id, forename, email, points, last_visit, last_reminder
+            FROM customers
+            WHERE email IS NOT NULL
+            AND email != ''
+            AND points > 0
             AND (
                 last_reminder IS NULL OR
                 last_reminder < CURRENT_TIMESTAMP - INTERVAL '21 days'
@@ -756,46 +776,12 @@ def send_reminders():
             FROM customers
             WHERE email IS NOT NULL
             AND email != ''
-            AND last_visit IS NOT NULL
-            AND last_visit < datetime('now', '-30 days')
+            AND points > 0
             AND (
                 last_reminder IS NULL OR
                 last_reminder < datetime('now', '-21 days')
             )
         """)
-
-    customers = cursor.fetchall()
-
-sent = 0
-
-for c in customers:
-
-    customer_id, name, email, points, last_visit, last_reminder = c
-
-    today = datetime.utcnow().weekday()
-    # Monday = 0 ... Sunday = 6
-
-    # -------------------------
-    # CAMPAIGN MODE (THU + FRI ONLY)
-    # -------------------------
-    if CAMPAIGN_ACTIVE and today in [3, 4]:
-
-        subject = "🐠 Double Points on Live Fish!"
-
-        message = f"""
-Hi {name},
-
-🐠 DOUBLE POINTS ON LIVE FISH — THIS WEEKEND!
-
-Earn double loyalty points on all live fish purchases.
-
-Perfect time to stock up your aquarium.
-
-See you soon,
-Newport Pets
-"""
-
-    else:
         # -------------------------
         # NORMAL REMINDER LOGIC
         # -------------------------
@@ -830,17 +816,22 @@ Newport Pets
             server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
             server.send_message(msg)
 
-        # update last reminder
-        if is_postgres():
-            cursor.execute(
-                "UPDATE customers SET last_reminder = CURRENT_TIMESTAMP WHERE id = %s",
-                (customer_id,)
-            )
-        else:
-            cursor.execute(
-                "UPDATE customers SET last_reminder = datetime('now') WHERE id = ?",
-                (customer_id,)
-            )
+        # -------------------------
+        # UPDATE LAST REMINDER (ONLY NORMAL REMINDERS)
+        # -------------------------
+
+    if not CAMPAIGN_ACTIVE:
+
+    if is_postgres():
+        cursor.execute(
+            "UPDATE customers SET last_reminder = CURRENT_TIMESTAMP WHERE id = %s",
+            (customer_id,)
+        )
+    else:
+        cursor.execute(
+            "UPDATE customers SET last_reminder = datetime('now') WHERE id = ?",
+            (customer_id,)
+        )
 
         sent += 1
 
