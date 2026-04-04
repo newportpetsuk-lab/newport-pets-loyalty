@@ -805,38 +805,37 @@ else:
     # SEND EMAIL
     # -------------------------
     try:
-        msg = MIMEMultipart()
-        msg["Subject"] = subject
-        msg["From"] = "newportpetsuk@gmail.com"
-        msg["To"] = email
+    msg = MIMEMultipart()
+    msg["Subject"] = subject
+    msg["From"] = "newportpetsuk@gmail.com"
+    msg["To"] = email
 
-        msg.attach(MIMEText(message, "plain"))
+    msg.attach(MIMEText(message, "plain"))
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
-            server.send_message(msg)
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+        server.send_message(msg)
 
-        # -------------------------
-        # UPDATE LAST REMINDER (ONLY NORMAL REMINDERS)
-        # -------------------------
-
+    # -------------------------
+    # UPDATE LAST REMINDER (ONLY NORMAL REMINDERS)
+    # -------------------------
     if not CAMPAIGN_ACTIVE:
 
-    if is_postgres():
-        cursor.execute(
-            "UPDATE customers SET last_reminder = CURRENT_TIMESTAMP WHERE id = %s",
-            (customer_id,)
-        )
-    else:
-        cursor.execute(
-            "UPDATE customers SET last_reminder = datetime('now') WHERE id = ?",
-            (customer_id,)
-        )
+        if is_postgres():
+            cursor.execute(
+                "UPDATE customers SET last_reminder = CURRENT_TIMESTAMP WHERE id = %s",
+                (customer_id,)
+            )
+        else:
+            cursor.execute(
+                "UPDATE customers SET last_reminder = datetime('now') WHERE id = ?",
+                (customer_id,)
+            )
 
-        sent += 1
+    sent += 1
 
-    except Exception as e:
-        print("Email error:", e)
+except Exception as e:
+    print("Email error:", e)
 
     conn.commit()
     conn.close()
