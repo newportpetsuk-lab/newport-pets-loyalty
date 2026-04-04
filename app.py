@@ -697,30 +697,6 @@ def dashboard():
         total_points=total_points,
         total_rewards=total_rewards
     )
-@app.route("/cleanup-test-data")
-def cleanup_test_data():
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    try:
-        # delete your test customers
-        cursor.execute("DELETE FROM customers WHERE forename = 'Agust'")
-
-        # clean orphan transactions
-        cursor.execute("""
-            DELETE FROM transactions 
-            WHERE customer_id NOT IN (SELECT id FROM customers)
-        """)
-
-        conn.commit()
-        return "Test data cleaned"
-
-    except Exception as e:
-        return f"Error: {e}"
-
-    finally:
-        conn.close()
 
 # -------------------------
 # FIX DATABASE (TEMP)
