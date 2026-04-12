@@ -65,20 +65,27 @@ button:hover {
 
 <p>Join our loyalty programme and collect points every time you shop.</p>
 
+<p style="font-size:13px; color:#666;">
+Takes less than 30 seconds to join
+</p>
+
 <form method="post" action="/signup">
 
-<input name="forename" placeholder="Forename" required>
+<input name="forename" placeholder="Forename" required autofocus>
 
 <input name="surname" placeholder="Surname" required>
 
-<input name="phone" pattern="[0-9]{11}" placeholder="Phone" required>
+<input name="phone" pattern="[0-9]{11}" inputmode="numeric" placeholder="Phone (e.g. 07123456789)" required>
 
 <input type="email" name="email" placeholder="Email" required>
 
 <button type="submit">Join Newport Pets Rewards</button>
 
 </form>
-
+    
+<p style="font-size:12px; color:gray;">
+By joining, you agree to receive occasional offers and updates from Newport Pets.
+</p>
 </div>
 
 </body>
