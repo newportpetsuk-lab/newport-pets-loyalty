@@ -474,6 +474,13 @@ def scan():
 
 @app.route("/addpoints", methods=["POST"])
 def addpoints():
+
+    # 🔐 SECRET KEY PROTECTION (ADD THIS)
+    key = request.args.get("key")
+    if key != "newport-secret-123":
+        return "Unauthorized", 403
+
+    # 🔐 EXISTING LOGIN CHECK
     if not session.get("logged_in"):
         return redirect("/login")
 
