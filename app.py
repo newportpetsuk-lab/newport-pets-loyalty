@@ -882,6 +882,65 @@ Newport Pets
 
     return f"Sent {sent} emails"
 
+# -------------------------
+# SEND PROMO EMAIL (MANUAL)
+# -------------------------
+@app.route("/send-promo")
+def send_promo():
+
+    key = request.args.get("key")
+    if key != "newport-secret-123":
+        return "Unauthorized", 403
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT forename, email
+        FROM customers
+        WHERE email IS NOT NULL AND email != ''
+    """)
+
+    customers = cursor.fetchall()
+
+    sent = 0
+
+    for name, email in customers:
+        try:
+            subject = "🐠 Double Points This Weekend!"
+
+            message = f"""
+Hi {name},
+
+🐠 DOUBLE POINTS THIS WEEKEND!
+
+Earn double points on all fish purchases.
+
+Perfect time to stock up.
+
+See you soon,
+Newport Pets
+"""
+
+            msg = MIMEMultipart()
+            msg["Subject"] = subject
+            msg["From"] = "newportpetsuk@gmail.com"
+            msg["To"] = email
+
+            msg.attach(MIMEText(message, "plain"))
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+                server.send_message(msg)
+
+            sent += 1
+
+        except Exception as e:
+            print("Email error:", e)
+
+    conn.close()
+
+    return f"Promo sent to {sent} customers"
 @app.route("/backup")
 def backup():
 
