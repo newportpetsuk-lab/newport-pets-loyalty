@@ -871,21 +871,43 @@ def backup():
     if key != "newport-secret-123":
         return "Unauthorized", 403
 
+    import csv
+    from io import StringIO
+    from flask import Response
+
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM customers")
-    customers = cursor.fetchall()
+    output = StringIO()
+    writer = csv.writer(output)
 
-    cursor.execute("SELECT * FROM transactions")
-    transactions = cursor.fetchall()
+    # Customers
+    writer.writerow(["CUSTOMERS"])
+    writer.writerow(["ID", "Forename", "Surname", "Phone", "Email", "Points", "Last Visit", "Last Reminder"])
+
+    cursor.execute("SELECT id, forename, surname, phone, email, points, last_visit, last_reminder FROM customers")
+    for row in cursor.fetchall():
+        writer.writerow(row)
+
+    writer.writerow([])
+
+    # Transactions
+    writer.writerow(["TRANSACTIONS"])
+    writer.writerow(["ID", "Customer ID", "Points", "Amount", "Reason", "Timestamp"])
+
+    cursor.execute("SELECT id, customer_id, points, amount, reason, timestamp FROM transactions")
+    for row in cursor.fetchall():
+        writer.writerow(row)
 
     conn.close()
 
-    return {
-        "customers": customers,
-        "transactions": transactions
-    }
+    output.seek(0)
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=loyalty_backup.csv"}
+    )
 # -------------------------
 # RUN
 # -------------------------
