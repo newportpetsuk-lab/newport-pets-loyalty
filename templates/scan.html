@@ -151,7 +151,7 @@ button:hover {
             <h3>Redeem Rewards</h3>
 
             {% for amount in redeem_options %}
-            <form method="POST" action="/redeem" style="display:inline;">
+            <form method="POST" action="/redeem?key=newport-secret-123" style="display:inline;">
                 <input type="hidden" name="customer_id" value="{{ customer_id }}">
                 <input type="hidden" name="redeem_amount" value="{{ amount }}">
 
