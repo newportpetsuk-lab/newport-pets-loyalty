@@ -881,32 +881,62 @@ def backup():
     output = StringIO()
     writer = csv.writer(output)
 
-    # Customers
+    # -------------------------
+    # CUSTOMERS
+    # -------------------------
     writer.writerow(["CUSTOMERS"])
-    writer.writerow(["ID", "Forename", "Surname", "Phone", "Email", "Points", "Last Visit", "Last Reminder"])
+    writer.writerow([
+        "ID",
+        "Forename",
+        "Surname",
+        "Phone",
+        "Email",
+        "Points"
+    ])
 
-    cursor.execute("SELECT id, forename, surname, phone, email, points, last_visit, last_reminder FROM customers")
+    cursor.execute("""
+        SELECT id, forename, surname, phone, email, points
+        FROM customers
+        ORDER BY id
+    """)
     for row in cursor.fetchall():
-        writer.writerow(row)
+        writer.writerow(list(row))
 
     writer.writerow([])
+    writer.writerow([])
 
-    # Transactions
+    # -------------------------
+    # TRANSACTIONS
+    # -------------------------
     writer.writerow(["TRANSACTIONS"])
-    writer.writerow(["ID", "Customer ID", "Points", "Amount", "Reason", "Timestamp"])
+    writer.writerow([
+        "ID",
+        "Customer ID",
+        "Points",
+        "Amount",
+        "Reason",
+        "Timestamp"
+    ])
 
-    cursor.execute("SELECT id, customer_id, points, amount, reason, timestamp FROM transactions")
+    cursor.execute("""
+        SELECT id, customer_id, points, amount, reason, timestamp
+        FROM transactions
+        ORDER BY id
+    """)
     for row in cursor.fetchall():
-        writer.writerow(row)
+        writer.writerow(list(row))
 
     conn.close()
 
-    output.seek(0)
+    csv_data = output.getvalue()
+    output.close()
 
     return Response(
-        output,
+        csv_data,
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=loyalty_backup.csv"}
+        headers={
+            "Content-Disposition": "attachment; filename=loyalty_backup.csv"
+        }
     )
 # -------------------------
 # RUN
