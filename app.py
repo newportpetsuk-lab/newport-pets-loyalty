@@ -486,20 +486,18 @@ def scan():
 @app.route("/addpoints", methods=["POST"])
 def addpoints():
 
-    # 🔐 SECRET KEY PROTECTION (ADD THIS)
     key = request.args.get("key")
     if key != "newport-secret-123":
         return "Unauthorized", 403
 
-    # 🔐 EXISTING LOGIN CHECK
     if not session.get("logged_in"):
         return redirect("/login")
 
     customer_id = request.form["customer_id"].strip().upper()
 
     fish_amount = float(request.form.get("fish_amount") or 0)
-other_amount = float(request.form.get("other_amount") or 0)
-excluded_amount = float(request.form.get("excluded_amount") or 0)
+    other_amount = float(request.form.get("other_amount") or 0)
+    excluded_amount = float(request.form.get("excluded_amount") or 0)
 
     points = int(fish_amount * 2 + other_amount)
     total_amount = fish_amount + other_amount + excluded_amount
@@ -509,10 +507,16 @@ excluded_amount = float(request.form.get("excluded_amount") or 0)
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        f"UPDATE customers SET points = points + {p()}, last_visit = CURRENT_TIMESTAMP WHERE id={p()}",
-        (points, id_number)
-    )
+    if is_postgres():
+        cursor.execute(
+            f"UPDATE customers SET points = points + {p()}, last_visit = CURRENT_TIMESTAMP WHERE id={p()}",
+            (points, id_number)
+        )
+    else:
+        cursor.execute(
+            f"UPDATE customers SET points = points + {p()}, last_visit = datetime('now') WHERE id={p()}",
+            (points, id_number)
+        )
 
     cursor.execute(
         f"INSERT INTO transactions (customer_id, points, amount, reason) VALUES ({p()}, {p()}, {p()}, {p()})",
@@ -530,19 +534,19 @@ excluded_amount = float(request.form.get("excluded_amount") or 0)
     conn.close()
 
     new_points = customer[3]
-    earned_today = points // 150 * 2
-    total_rewards = new_points // 150 * 2
+    earned_today = (points // 150) * 2
+    total_rewards = (new_points // 150) * 2
     formatted_id = "NP" + str(id_number).zfill(5)
 
     try:
         if customer[2]:
             send_points_email(
-                customer[2],   # email
-                customer[0],   # forename
+                customer[2],
+                customer[0],
                 points,
                 new_points
             )
-    except:
+    except Exception:
         pass
 
     return render_template(
