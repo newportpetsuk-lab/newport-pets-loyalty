@@ -307,10 +307,21 @@ def home():
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
-        forename = request.form["forename"]
-        surname = request.form["surname"]
-        phone = request.form["phone"]
-        email = request.form["email"]
+
+        forename = request.form["forename"].strip()
+        surname = request.form["surname"].strip()
+        phone = request.form["phone"].strip()
+        email = request.form["email"].strip()
+
+        # ✅ VALIDATION (ALL REQUIRED)
+        if not forename or not surname or not phone or not email:
+            return "All fields are required"
+
+        import re
+
+        # ✅ EMAIL FORMAT CHECK
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            return "Please enter a valid email address"
 
         conn = get_connection()
         cursor = conn.cursor()
