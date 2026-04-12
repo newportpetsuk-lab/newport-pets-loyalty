@@ -864,6 +864,28 @@ Newport Pets
 
     return f"Sent {sent} emails"
 
+@app.route("/backup")
+def backup():
+
+    key = request.args.get("key")
+    if key != "newport-secret-123":
+        return "Unauthorized", 403
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM customers")
+    customers = cursor.fetchall()
+
+    cursor.execute("SELECT * FROM transactions")
+    transactions = cursor.fetchall()
+
+    conn.close()
+
+    return {
+        "customers": customers,
+        "transactions": transactions
+    }
 # -------------------------
 # RUN
 # -------------------------
