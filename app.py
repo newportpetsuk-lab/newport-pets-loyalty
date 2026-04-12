@@ -497,9 +497,9 @@ def addpoints():
 
     customer_id = request.form["customer_id"].strip().upper()
 
-    fish_amount = float(request.form.get("fish_amount", "0") or 0)
-    other_amount = float(request.form.get("other_amount", "0") or 0)
-    excluded_amount = float(request.form.get("excluded_amount", "0") or 0)
+    fish_amount = float(request.form.get("fish_amount") or 0)
+other_amount = float(request.form.get("other_amount") or 0)
+excluded_amount = float(request.form.get("excluded_amount") or 0)
 
     points = int(fish_amount * 2 + other_amount)
     total_amount = fish_amount + other_amount + excluded_amount
