@@ -648,6 +648,11 @@ def lookup():
 
 @app.route("/redeem", methods=["POST"])
 def redeem():
+
+    key = request.args.get("key")
+    if key != "newport-secret-123":
+        return "Unauthorized", 403
+
     if not session.get("logged_in"):
         return redirect("/login")
 
