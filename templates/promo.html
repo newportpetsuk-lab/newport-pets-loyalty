@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Send Promotion</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #f5f5f5;
+    text-align: center;
+}
+
+.container {
+    background: white;
+    width: 400px;
+    margin: 60px auto;
+    padding: 30px;
+    border-radius: 10px;
+}
+
+input, textarea {
+    width: 90%;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+button {
+    margin-top: 15px;
+    padding: 12px;
+    width: 95%;
+    background: #ff7a00;
+    color: white;
+    border: none;
+}
+
+.success {
+    color: green;
+    margin-top: 15px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Send Promotion</h2>
+
+<form method="POST">
+
+<input name="subject" placeholder="Email subject" required>
+
+<textarea name="message" rows="6" placeholder="Write your message here..." required></textarea>
+
+<button type="submit">Send to all customers</button>
+
+</form>
+
+{% if message_sent %}
+<p class="success">{{ message_sent }}</p>
+{% endif %}
+
+</div>
+
+</body>
+</html>
