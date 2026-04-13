@@ -993,12 +993,19 @@ Newport Pets
 # PROMO SCREEN (MANUAL SEND)
 # -------------------------
 
+# -------------------------
+# PROMO SCREEN (WITH PREVIEW)
+# -------------------------
+
 @app.route("/promo", methods=["GET", "POST"])
 def promo():
 
     if not session.get("logged_in"):
         return redirect("/login")
 
+    preview = None
+    subject = ""
+    message = ""
     message_sent = None
 
     if request.method == "POST":
@@ -1006,44 +1013,63 @@ def promo():
         subject = request.form.get("subject", "")
         message = request.form.get("message", "")
 
-        conn = get_connection()
-        cursor = conn.cursor()
+        action = request.form.get("action")
 
-        cursor.execute("""
-            SELECT forename, email
-            FROM customers
-            WHERE email IS NOT NULL AND email != ''
-        """)
+        # -------------------------
+        # PREVIEW MODE
+        # -------------------------
+        if action == "preview":
+            preview = f"Hi Customer,\n\n{message}\n\nNewport Pets"
 
-        customers = cursor.fetchall()
+        # -------------------------
+        # SEND MODE
+        # -------------------------
+        elif action == "send":
 
-        sent = 0
+            conn = get_connection()
+            cursor = conn.cursor()
 
-        for name, email in customers:
-            try:
-                msg = MIMEMultipart()
-                msg["Subject"] = subject
-                msg["From"] = "newportpetsuk@gmail.com"
-                msg["To"] = email
+            cursor.execute("""
+                SELECT forename, email
+                FROM customers
+                WHERE email IS NOT NULL AND email != ''
+            """)
 
-                full_message = f"Hi {name},\n\n{message}\n\nNewport Pets"
+            customers = cursor.fetchall()
 
-                msg.attach(MIMEText(full_message, "plain"))
+            sent = 0
 
-                with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                    server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
-                    server.send_message(msg)
+            for name, email in customers:
+                try:
+                    msg = MIMEMultipart()
+                    msg["Subject"] = subject
+                    msg["From"] = "newportpetsuk@gmail.com"
+                    msg["To"] = email
 
-                sent += 1
+                    full_message = f"Hi {name},\n\n{message}\n\nNewport Pets"
 
-            except Exception as e:
-                print("Email error:", e)
+                    msg.attach(MIMEText(full_message, "plain"))
 
-        conn.close()
+                    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                        server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+                        server.send_message(msg)
 
-        message_sent = f"Promo sent to {sent} customers"
+                    sent += 1
 
-    return render_template("promo.html", message_sent=message_sent)
+                except Exception as e:
+                    print("Email error:", e)
+
+            conn.close()
+
+            message_sent = f"Promo sent to {sent} customers"
+
+    return render_template(
+        "promo.html",
+        preview=preview,
+        subject=subject,
+        message=message,
+        message_sent=message_sent
+    )
     
 @app.route("/backup")
 def backup():
