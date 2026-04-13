@@ -643,6 +643,44 @@ def lookup():
     return render_template("lookup.html", results=results, error=error)
 
 # -------------------------
+# FIND ACCOUNT (CUSTOMER)
+# -------------------------
+
+@app.route("/find-account", methods=["GET", "POST"])
+def find_account():
+
+    customer = None
+    error = None
+
+    if request.method == "POST":
+        phone = request.form.get("phone", "").strip()
+
+        if not phone:
+            error = "Enter your phone number"
+        else:
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            if is_postgres():
+                cursor.execute(
+                    f"SELECT forename, surname, customer_code, points FROM customers WHERE phone = {p()}",
+                    (phone,)
+                )
+            else:
+                cursor.execute(
+                    f"SELECT forename, surname, customer_code, points FROM customers WHERE phone = {p()}",
+                    (phone,)
+                )
+
+            customer = cursor.fetchone()
+            conn.close()
+
+            if not customer:
+                error = "Account not found"
+
+    return render_template("find_account.html", customer=customer, error=error)
+    
+# -------------------------
 # REDEEM
 # -------------------------
 
