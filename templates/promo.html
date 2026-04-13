@@ -25,12 +25,20 @@ input, textarea {
 }
 
 button {
-    margin-top: 15px;
+    margin-top: 10px;
     padding: 12px;
     width: 95%;
     background: #ff7a00;
     color: white;
     border: none;
+}
+
+.preview-box {
+    background: #fafafa;
+    padding: 15px;
+    margin-top: 15px;
+    text-align: left;
+    border: 1px solid #ddd;
 }
 
 .success {
@@ -48,11 +56,20 @@ button {
 
 <form method="POST">
 
-<input name="subject" placeholder="Email subject" required>
+<input name="subject" placeholder="Email subject" value="{{ subject }}" required>
 
-<textarea name="message" rows="6" placeholder="Write your message here..." required></textarea>
+<textarea name="message" rows="6" placeholder="Write your message here..." required>{{ message }}</textarea>
 
-<button type="submit">Send to all customers</button>
+<button type="submit" name="action" value="preview">Preview</button>
+
+{% if preview %}
+<div class="preview-box">
+    <strong>Preview:</strong>
+    <pre>{{ preview }}</pre>
+</div>
+
+<button type="submit" name="action" value="send">Confirm & Send</button>
+{% endif %}
 
 </form>
 
