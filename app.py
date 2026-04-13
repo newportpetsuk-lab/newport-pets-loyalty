@@ -136,7 +136,7 @@ Thank you for supporting Newport Pets!
             msg.attach(img)
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+            server.login("newportpetsuk@gmail.com", "mwsl vzqs bqmv thlz")
             server.send_message(msg)
 
         print("EMAIL SENT WITH QR")
@@ -176,7 +176,7 @@ Your new balance: {new_points} points
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+            server.login("newportpetsuk@gmail.com", "mwsl vzqs bqmv thlz")
             server.send_message(msg)
 
         print("POINTS EMAIL SENT")
@@ -210,7 +210,7 @@ You currently have {points} points with us.
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+            server.login("newportpetsuk@gmail.com", "mwsl vzqs bqmv thlz")
             server.send_message(msg)
 
         print("REMINDER EMAIL SENT")
@@ -902,7 +902,7 @@ Newport Pets
             msg.attach(MIMEText(message, "plain"))
 
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+                server.login("newportpetsuk@gmail.com", "mwsl vzqs bqmv thlz")
                 server.send_message(msg)
 
             # ONLY update reminder if NOT campaign
@@ -977,7 +977,7 @@ Newport Pets
             msg.attach(MIMEText(message, "plain"))
 
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+                server.login("newportpetsuk@gmail.com", "mwsl vzqs bqmv thlz")
                 server.send_message(msg)
 
             sent += 1
@@ -1051,7 +1051,7 @@ def promo():
                     msg.attach(MIMEText(full_message, "plain"))
 
                     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                        server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+                        server.login("newportpetsuk@gmail.com", "mwsl vzqs bqmv thlz")
                         server.send_message(msg)
 
                     sent += 1
