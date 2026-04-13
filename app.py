@@ -988,6 +988,63 @@ Newport Pets
     conn.close()
 
     return f"Promo sent to {sent} customers"
+
+# -------------------------
+# PROMO SCREEN (MANUAL SEND)
+# -------------------------
+
+@app.route("/promo", methods=["GET", "POST"])
+def promo():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    message_sent = None
+
+    if request.method == "POST":
+
+        subject = request.form.get("subject", "")
+        message = request.form.get("message", "")
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT forename, email
+            FROM customers
+            WHERE email IS NOT NULL AND email != ''
+        """)
+
+        customers = cursor.fetchall()
+
+        sent = 0
+
+        for name, email in customers:
+            try:
+                msg = MIMEMultipart()
+                msg["Subject"] = subject
+                msg["From"] = "newportpetsuk@gmail.com"
+                msg["To"] = email
+
+                full_message = f"Hi {name},\n\n{message}\n\nNewport Pets"
+
+                msg.attach(MIMEText(full_message, "plain"))
+
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                    server.login("newportpetsuk@gmail.com", "fokk fgay ccwo enif")
+                    server.send_message(msg)
+
+                sent += 1
+
+            except Exception as e:
+                print("Email error:", e)
+
+        conn.close()
+
+        message_sent = f"Promo sent to {sent} customers"
+
+    return render_template("promo.html", message_sent=message_sent)
+    
 @app.route("/backup")
 def backup():
 
