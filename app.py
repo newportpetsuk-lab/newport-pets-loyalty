@@ -1147,37 +1147,6 @@ def backup():
     )
 
 # -------------------------
-# DELETE CUSTOMER (TEMP)
-# -------------------------
-@app.route("/delete/<customer_id>")
-def delete_customer(customer_id):
-
-    key = request.args.get("key")
-    if key != "newport-secret-123":
-        return "Unauthorized", 403
-
-    id_number = int(customer_id.replace("NP", ""))
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    # delete transactions first
-    cursor.execute(
-        f"DELETE FROM transactions WHERE customer_id = {p()}",
-        (id_number,)
-    )
-
-    # delete customer
-    cursor.execute(
-        f"DELETE FROM customers WHERE id = {p()}",
-        (id_number,)
-    )
-
-    conn.commit()
-    conn.close()
-
-    return f"Customer {customer_id} deleted"
-# -------------------------
 # RUN
 # -------------------------
 
